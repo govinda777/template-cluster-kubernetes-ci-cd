@@ -37,6 +37,8 @@ O uso de Ingress Controllers tradicionais (como NGINX Ingress) apresentava forte
 2. **`Gateway`**: Representa a instanciação do balanceador de carga na infraestrutura (AWS Application Load Balancer ou Network Load Balancer).
 3. **`HTTPRoute`**: Expõe caminhos e regras de roteamento (ex: `/api/v1/exemplo` ou `/v1/pagamentos`) e aponta para os Services do Kubernetes.
 
+Um guia prático completo com exemplos e troubleshooting está disponível no [Guia de Adoção Técnica da Kubernetes Gateway API](docs/gateway-api-adoption-guide.md).
+
 ---
 
 ## 🔑 3. Gestão de Identidades e Permissões (EKS Pod Identity)

@@ -211,6 +211,8 @@ Com o cluster ativo e o Kubeconfig configurado, podemos inicializar o fluxo de G
 - **n8n Workflow Automation:** Instalado na namespace `platform-tools`, conectado ao PostgreSQL via Secret segura, e exposto externamente na URL `n8n.yourcompany.com` através da Gateway API (`HTTPRoute`).
 - **XperienceClimb (Aplicação Prod):** Localizado em `apps-template/overlays/prod/xperience-climb/`, representa a sua aplicação real rodando em Produção com alta disponibilidade (2 réplicas) utilizando Pod Identity para acessar serviços AWS adicionais sem chaves estáticas, e exposta via HTTPRoute em `xperience.yourcompany.com`.
 
+Para mais detalhes sobre as práticas de adoção e configuração da Gateway API, consulte o [Guia de Adoção Técnica da Kubernetes Gateway API](docs/gateway-api-adoption-guide.md).
+
 ---
 
 ## 📖 Como Instalar e Expor Novas APIs/Serviços no Cluster (Guia de Onboarding)
