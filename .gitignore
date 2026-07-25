@@ -18,3 +18,6 @@ Thumbs.db
 
 # AWS Profile Local Environment File
 .aws_profile_env
+
+# GCP Profile Local Environment File
+.gcp_profile_env
