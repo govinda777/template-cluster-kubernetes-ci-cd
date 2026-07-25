@@ -35,6 +35,9 @@ module "pod_identity_api_example" {
 # ===============================================================================
 # GCP GKE DEPLOYMENT (Enabled by default as per project requirements)
 # ===============================================================================
+# Temporarily disabled due to missing GCP credentials
+# Uncomment and configure GCP credentials to enable
+/*
 module "gke" {
   source       = "../../modules/gke"
   project_id   = var.gcp_project_id
@@ -44,6 +47,7 @@ module "gke" {
   vpc_cidr     = "10.2.0.0/16"
   subnet_cidr  = "10.2.1.0/24"
 }
+*/
 
 # ===============================================================================
 # AZURE AKS EXTENSION (DEMO PURPOSES / OPTIONAL)

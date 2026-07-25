@@ -31,7 +31,7 @@ resource "google_container_cluster" "primary" {
     services_ipv4_cidr_block = "/20"
   }
 
-  tags = {
+  resource_labels = {
     environment = var.environment
   }
 }
