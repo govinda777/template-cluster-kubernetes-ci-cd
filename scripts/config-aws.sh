@@ -527,7 +527,7 @@ if [[ "$RUN_BOOTSTRAP" =~ ^[Yy]$ ]]; then
     export AWS_PROFILE="$AWS_PROFILE"
     export AWS_REGION="$AWS_REGION"
 
-    $TOFU_BIN init
+    $TOFU_BIN init -upgrade
 
     AWS_REGION_DETEC=$(aws configure get region --profile "$AWS_PROFILE" 2>/dev/null || echo "us-east-1")
     read -p "Qual região da AWS deseja utilizar para o OIDC? [$AWS_REGION_DETEC]: " AWS_REG

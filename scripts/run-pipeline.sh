@@ -104,7 +104,7 @@ fi
 
 echo "-> Inicializando Dev..."
 cd terraform/live/dev
-$TOFU_BIN init
+$TOFU_BIN init -upgrade
 echo "-> Validando Dev..."
 $TOFU_BIN validate
 echo "-> Planejando Dev..."
@@ -160,7 +160,7 @@ fi
 
 echo "-> Inicializando Prod..."
 cd terraform/live/prod
-$TOFU_BIN init
+$TOFU_BIN init -upgrade
 echo "-> Validando Prod..."
 $TOFU_BIN validate
 echo "-> Planejando Prod..."

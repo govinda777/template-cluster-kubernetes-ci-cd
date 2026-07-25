@@ -480,13 +480,26 @@ if [[ "$RUN_BOOTSTRAP" =~ ^[Yy]$ ]]; then
         TOFU_BIN="terraform"
     fi
 
+    # Garantir que as Application Default Credentials (ADC) do GCP estão válidas para o OpenTofu/Terraform
+    echo -e "\n${BLUE}[INFO] Verificando validade das Application Default Credentials (ADC) do GCP...${NC}"
+    if ! gcloud auth application-default print-access-token &>/dev/null; then
+        echo -e "${YELLOW}[WARN] Application Default Credentials (ADC) não encontradas ou expiradas para o GCP.${NC}"
+        echo -e "${BLUE}[INFO] Solicitando autenticação ADC (gcloud auth application-default login) para evitar falhas no OpenTofu...${NC}"
+        if ! gcloud auth application-default login; then
+            echo -e "${YELLOW}[WARN] Falha na autenticação via browser. Tentando com fluxo manual...${NC}"
+            gcloud auth application-default login --no-launch-browser
+        fi
+    else
+        echo -e "${GREEN}[OK] Application Default Credentials (ADC) estão ativas e válidas!${NC}"
+    fi
+
     echo -e "\n${BLUE}[INFO] Inicializando o OpenTofu/Terraform para o Bootstrap do OIDC...${NC}"
     cd terraform/bootstrap
 
-    $TOFU_BIN init
+    $TOFU_BIN init -upgrade
 
-    echo -e "\n${BLUE}[INFO] Aplicando recursos no GCP via OpenTofu/Terraform...${NC}"
-    # Carregar credenciais AWS locais se existirem para evitar falha em recursos AWS no bootstrap
+    echo -e "\n${BLUE}[INFO] Aplicando recursos globais de Bootstrap (AWS OIDC & GCP WIF) via OpenTofu/Terraform...${NC}"
+    # Carrega credenciais AWS locais se existirem para evitar falhas de validação nos recursos AWS do bootstrap
     if [ -f "../../.aws_profile_env" ]; then
         source "../../.aws_profile_env"
         export AWS_PROFILE
