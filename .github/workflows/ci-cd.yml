@@ -12,6 +12,11 @@ on:
       - 'feature/**'
       - 'bugfix/**'
 
+# OTIMIZAÇÃO: Cancela workflows em andamento se houver um novo push na mesma PR/branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   id-token: write
   contents: read
@@ -72,9 +77,29 @@ jobs:
     needs: lint-and-security
     runs-on: ubuntu-latest
     env:
-      AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
-      ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME_DEV || 'arn:aws:iam::123456789012:role/github-actions-eks-dev-role' }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME_DEV }}
     steps:
+      # OTIMIZAÇÃO 1: Validação Prévia Imediata (Falha em < 2 segundos)
+      - name: Pre-flight Check - Validate Required Secrets
+        run: |
+          MISSING_VARS=0
+
+          if [ -z "${{ secrets.AWS_REGION }}" ]; then
+            echo "::error title=Secret Ausente::A variável 'AWS_REGION' não está configurada nos Secrets do repositório."
+            MISSING_VARS=1
+          fi
+
+          if [ -z "${{ secrets.AWS_ROLE_TO_ASSUME_DEV }}" ]; then
+            echo "::error title=Secret Ausente::A variável 'AWS_ROLE_TO_ASSUME_DEV' não está configurada nos Secrets do repositório."
+            MISSING_VARS=1
+          fi
+
+          if [ $MISSING_VARS -eq 1 ]; then
+            echo "::error::Validação de ambiente de desenvolvimento falhou. Interrompendo a pipeline antes da execução dos passos pesados."
+            exit 1
+          fi
+
       - name: Checkout Code
         uses: actions/checkout@v4
 
@@ -84,31 +109,26 @@ jobs:
           tofu_version: "1.8.2"
 
       - name: Configure AWS Credentials (OIDC)
-        id: aws-auth
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ env.ROLE_TO_ASSUME }}
           aws-region: ${{ env.AWS_REGION }}
           audience: sts.amazonaws.com
-        continue-on-error: true
 
       - name: OpenTofu Init (Dev)
-        if: steps.aws-auth.outcome == 'success'
         run: tofu init
         working-directory: terraform/live/dev
 
       - name: OpenTofu Format Check
-        if: steps.aws-auth.outcome == 'success'
         run: tofu fmt -check
         working-directory: terraform/live/dev
 
       - name: OpenTofu Plan (Dev)
-        if: steps.aws-auth.outcome == 'success'
         run: tofu plan -no-color -out=tfplan
         working-directory: terraform/live/dev
 
       - name: OpenTofu Apply (Dev)
-        if: steps.aws-auth.outcome == 'success' && github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: tofu apply -auto-approve tfplan
         working-directory: terraform/live/dev
 
@@ -117,9 +137,29 @@ jobs:
     needs: tofu-dev
     runs-on: ubuntu-latest
     env:
-      AWS_REGION: ${{ secrets.AWS_REGION_PROD || 'us-west-2' }}
-      ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME_PROD || 'arn:aws:iam::987654321098:role/github-actions-eks-prod-role' }}
+      AWS_REGION: ${{ secrets.AWS_REGION_PROD }}
+      ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME_PROD }}
     steps:
+      # OTIMIZAÇÃO 2: Validação Prévia Imediata para Prod
+      - name: Pre-flight Check - Validate Required Secrets
+        run: |
+          MISSING_VARS=0
+
+          if [ -z "${{ secrets.AWS_REGION_PROD }}" ]; then
+            echo "::error title=Secret Ausente::A variável 'AWS_REGION_PROD' não está configurada nos Secrets do repositório."
+            MISSING_VARS=1
+          fi
+
+          if [ -z "${{ secrets.AWS_ROLE_TO_ASSUME_PROD }}" ]; then
+            echo "::error title=Secret Ausente::A variável 'AWS_ROLE_TO_ASSUME_PROD' não está configurada nos Secrets do repositório."
+            MISSING_VARS=1
+          fi
+
+          if [ $MISSING_VARS -eq 1 ]; then
+            echo "::error::Validação de ambiente de produção falhou. Interrompendo a pipeline antes da execução dos passos pesados."
+            exit 1
+          fi
+
       - name: Checkout Code
         uses: actions/checkout@v4
 
@@ -129,31 +169,26 @@ jobs:
           tofu_version: "1.8.2"
 
       - name: Configure AWS Credentials (OIDC)
-        id: aws-auth
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ env.ROLE_TO_ASSUME }}
           aws-region: ${{ env.AWS_REGION }}
           audience: sts.amazonaws.com
-        continue-on-error: true
 
       - name: OpenTofu Init (Prod)
-        if: steps.aws-auth.outcome == 'success'
         run: tofu init
         working-directory: terraform/live/prod
 
       - name: OpenTofu Format Check
-        if: steps.aws-auth.outcome == 'success'
         run: tofu fmt -check
         working-directory: terraform/live/prod
 
       - name: OpenTofu Plan (Prod)
-        if: steps.aws-auth.outcome == 'success'
         run: tofu plan -no-color -out=tfplan
         working-directory: terraform/live/prod
 
       - name: OpenTofu Apply (Prod)
-        if: steps.aws-auth.outcome == 'success' && github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: tofu apply -auto-approve tfplan
         working-directory: terraform/live/prod
 
@@ -162,9 +197,29 @@ jobs:
     needs: tofu-prod
     runs-on: ubuntu-latest
     env:
-      AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
-      ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME_TEST || 'arn:aws:iam::123456789012:role/github-actions-eks-test-role' }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME_TEST }}
     steps:
+      # OTIMIZAÇÃO 3: Validação Prévia Imediata para Testes
+      - name: Pre-flight Check - Validate Required Secrets
+        run: |
+          MISSING_VARS=0
+
+          if [ -z "${{ secrets.AWS_REGION }}" ]; then
+            echo "::error title=Secret Ausente::A variável 'AWS_REGION' não está configurada nos Secrets do repositório."
+            MISSING_VARS=1
+          fi
+
+          if [ -z "${{ secrets.AWS_ROLE_TO_ASSUME_TEST }}" ]; then
+            echo "::error title=Secret Ausente::A variável 'AWS_ROLE_TO_ASSUME_TEST' não está configurada nos Secrets do repositório."
+            MISSING_VARS=1
+          fi
+
+          if [ $MISSING_VARS -eq 1 ]; then
+            echo "::error::Validação de ambiente de testes falhou. Interrompendo a pipeline antes da execução dos passos pesados."
+            exit 1
+          fi
+
       - name: Checkout Code
         uses: actions/checkout@v4
 
@@ -179,23 +234,19 @@ jobs:
           tofu_version: "1.8.2"
 
       - name: Configure AWS Credentials (OIDC)
-        id: aws-auth
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ env.ROLE_TO_ASSUME }}
           aws-region: ${{ env.AWS_REGION }}
           audience: sts.amazonaws.com
-        continue-on-error: true
 
       - name: Install Go Dependencies
-        if: steps.aws-auth.outcome == 'success'
         run: |
           cd tests/integration
           go mod init github.com/govinda777/template-cluster-kubernetes-ci-cd/tests/integration || true
           go mod tidy
 
       - name: Run Terratest Integration Tests
-        if: steps.aws-auth.outcome == 'success'
         run: |
           cd tests/integration
           go test -v -timeout 60m -run TestE2ECluster
