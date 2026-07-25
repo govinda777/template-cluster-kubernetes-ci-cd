@@ -15,3 +15,6 @@ tfplan
 # OS specific files
 .DS_Store
 Thumbs.db
+
+# AWS Profile Local Environment File
+.aws_profile_env
