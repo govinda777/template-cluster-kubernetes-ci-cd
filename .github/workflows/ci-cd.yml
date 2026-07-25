@@ -1,0 +1,263 @@
+name: "Platform Pipeline CI/CD"
+
+on:
+  push:
+    branches:
+      - 'main'
+      - 'feature/**'
+      - 'bugfix/**'
+  pull_request:
+    branches:
+      - 'main'
+      - 'feature/**'
+      - 'bugfix/**'
+
+# OTIMIZAÇÃO: Cancela workflows em andamento se houver um novo push na mesma PR/branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: "true"
+
+jobs:
+  lint-and-security:
+    name: "01 - Static Linting & Security"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Tofu/Terraform
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: "1.8.2"
+
+      - name: Format Check HCL
+        run: tofu fmt -check -recursive terraform/
+
+      - name: Lint YAML Manifests
+        uses: ibiqlik/action-yamllint@v3
+        with:
+          file_or_dir: "apps-template/ platform-apps/"
+          config_file: ".yamllint.yml"
+        continue-on-error: true
+
+      - name: Run tfsec on Terraform Modules
+        # Usamos o tfsec pré-compilado ou via CLI instalável, pois aquasecurity/tfsec-action@v1.0.0
+        # tenta compilar uma imagem docker local (alpine:3.12) que falha em runners com rede restrita / timeouts de Docker Hub.
+        # Baixar o binário diretamente do GitHub Releases é 10 vezes mais rápido, leve, seguro e imune a i/o timeouts do Docker!
+        run: |
+          wget -q https://github.com/aquasecurity/tfsec/releases/download/v1.28.11/tfsec-linux-amd64
+          chmod +x tfsec-linux-amd64
+          sudo mv tfsec-linux-amd64 /usr/local/bin/tfsec
+          tfsec terraform/ --soft-fail
+
+      - name: Run Trivy vulnerability scanner on Repo
+        # Usamos o Trivy CLI instalável de forma nativa e ultra veloz sem depender de builds de imagem docker do Docker Hub.
+        run: |
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | sudo tee /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update -y -q && sudo apt-get install trivy -y -q
+          trivy config --severity HIGH,CRITICAL --exit-code 0 .
+
+      - name: Install Conftest
+        run: |
+          wget -q https://github.com/open-policy-agent/conftest/releases/download/v0.54.0/conftest_0.54.0_Linux_x86_64.tar.gz
+          tar xzf conftest_0.54.0_Linux_x86_64.tar.gz
+          sudo mv conftest /usr/local/bin/
+          rm -f conftest_0.54.0_Linux_x86_64.tar.gz
+
+      - name: Verify Kubernetes Manifests against OPA Policies
+        run: |
+          conftest test --policy tests/policies/ apps-template/base/
+          conftest test --policy tests/policies/ apps-template/overlays/prod/xperience-climb/
+
+  tofu-dev:
+    name: "02 - OpenTofu Dev Environment"
+    needs: lint-and-security
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME_DEV }}
+    steps:
+      # OTIMIZAÇÃO 1: Validação Prévia Imediata com links precisos da documentação interna e externa
+      - name: Pre-flight Check - Validate Required Secrets
+        run: |
+          MISSING_VARS=0
+
+          if [ -z "${{ secrets.AWS_REGION }}" ]; then
+            echo "::error title=Secret Ausente::A variável 'AWS_REGION' não está configurada nos Secrets do repositório."
+            MISSING_VARS=1
+          fi
+
+          if [ -z "${{ secrets.AWS_ROLE_TO_ASSUME_DEV }}" ]; then
+            echo "::error title=Secret Ausente::A variável 'AWS_ROLE_TO_ASSUME_DEV' não está configurada nos Secrets do repositório."
+            MISSING_VARS=1
+          fi
+
+          if [ $MISSING_VARS -eq 1 ]; then
+            echo "::warning title=Documentação do Projeto::Veja como configurar as variáveis de ambiente e secrets no README.md do projeto: https://github.com/${{ github.repository }}/blob/main/README.md#1-configurando-o-oidc-da-aws-no-github"
+            echo "::warning title=Documentação de IAM Role (AWS)::Veja como criar a relação de confiança OIDC na AWS: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc.html"
+            echo "::error::Validação de ambiente de desenvolvimento falhou. Interrompendo a pipeline antes da execução dos passos pesados."
+            exit 1
+          fi
+
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: "1.8.2"
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+          audience: sts.amazonaws.com
+
+      - name: OpenTofu Init (Dev)
+        run: tofu init
+        working-directory: terraform/live/dev
+
+      - name: OpenTofu Format Check
+        run: tofu fmt -check
+        working-directory: terraform/live/dev
+
+      - name: OpenTofu Plan (Dev)
+        run: tofu plan -no-color -out=tfplan
+        working-directory: terraform/live/dev
+
+      - name: OpenTofu Apply (Dev)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: tofu apply -auto-approve tfplan
+        working-directory: terraform/live/dev
+
+  tofu-prod:
+    name: "03 - OpenTofu Prod Environment"
+    needs: tofu-dev
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION_PROD }}
+      ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME_PROD }}
+    steps:
+      # OTIMIZAÇÃO 2: Validação Prévia Imediata para Prod
+      - name: Pre-flight Check - Validate Required Secrets
+        run: |
+          MISSING_VARS=0
+
+          if [ -z "${{ secrets.AWS_REGION_PROD }}" ]; then
+            echo "::error title=Secret Ausente::A variável 'AWS_REGION_PROD' não está configurada nos Secrets do repositório."
+            MISSING_VARS=1
+          fi
+
+          if [ -z "${{ secrets.AWS_ROLE_TO_ASSUME_PROD }}" ]; then
+            echo "::error title=Secret Ausente::A variável 'AWS_ROLE_TO_ASSUME_PROD' não está configurada nos Secrets do repositório."
+            MISSING_VARS=1
+          fi
+
+          if [ $MISSING_VARS -eq 1 ]; then
+            echo "::warning title=Documentação do Projeto::Veja como configurar as variáveis de ambiente e secrets no README.md do projeto: https://github.com/${{ github.repository }}/blob/main/README.md#1-configurando-o-oidc-da-aws-no-github"
+            echo "::warning title=Documentação de IAM Role (AWS)::Veja como criar a relação de confiança OIDC na AWS: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc.html"
+            echo "::error::Validação de ambiente de produção falhou. Interrompendo a pipeline antes da execução dos passos pesados."
+            exit 1
+          fi
+
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: "1.8.2"
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+          audience: sts.amazonaws.com
+
+      - name: OpenTofu Init (Prod)
+        run: tofu init
+        working-directory: terraform/live/prod
+
+      - name: OpenTofu Format Check
+        run: tofu fmt -check
+        working-directory: terraform/live/prod
+
+      - name: OpenTofu Plan (Prod)
+        run: tofu plan -no-color -out=tfplan
+        working-directory: terraform/live/prod
+
+      - name: OpenTofu Apply (Prod)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: tofu apply -auto-approve tfplan
+        working-directory: terraform/live/prod
+
+  integration-test:
+    name: "04 - Terratest Integration Suite"
+    needs: tofu-prod
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME_TEST }}
+    steps:
+      # OTIMIZAÇÃO 3: Validação Prévia Imediata para Testes
+      - name: Pre-flight Check - Validate Required Secrets
+        run: |
+          MISSING_VARS=0
+
+          if [ -z "${{ secrets.AWS_REGION }}" ]; then
+            echo "::error title=Secret Ausente::A variável 'AWS_REGION' não está configurada nos Secrets do repositório."
+            MISSING_VARS=1
+          fi
+
+          if [ -z "${{ secrets.AWS_ROLE_TO_ASSUME_TEST }}" ]; then
+            echo "::error title=Secret Ausente::A variável 'AWS_ROLE_TO_ASSUME_TEST' não está configurada nos Secrets do repositório."
+            MISSING_VARS=1
+          fi
+
+          if [ $MISSING_VARS -eq 1 ]; then
+            echo "::warning title=Documentação do Projeto::Veja como configurar as variáveis de ambiente e secrets no README.md do projeto: https://github.com/${{ github.repository }}/blob/main/README.md#1-configurando-o-oidc-da-aws-no-github"
+            echo "::warning title=Documentação de IAM Role (AWS)::Veja como criar a relação de confiança OIDC na AWS: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc.html"
+            echo "::error::Validação de ambiente de testes falhou. Interrompendo a pipeline antes da execução dos passos pesados."
+            exit 1
+          fi
+
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Environment
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: "1.8.2"
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+          audience: sts.amazonaws.com
+
+      - name: Install Go Dependencies
+        run: |
+          cd tests/integration
+          go mod init github.com/govinda777/template-cluster-kubernetes-ci-cd/tests/integration || true
+          go mod tidy
+
+      - name: Run Terratest Integration Tests
+        run: |
+          cd tests/integration
+          go test -v -timeout 60m -run TestE2ECluster

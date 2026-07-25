@@ -1,0 +1,68 @@
+# Este é um workflow de exemplo para ser colocado no repositório do microsserviço/aplicação (ex: XperienceClimb).
+# Ele automatiza o Build, publicação no Amazon ECR e atualização automática (GitOps) neste repositório de cluster.
+
+name: "Application CI/CD (Workload Template)"
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'
+      - '.gitignore'
+
+permissions:
+  id-token: write
+  contents: write # Requerido para fazer commit de atualização de tag no repo de infraestrutura
+
+env:
+  AWS_REGION: "us-east-1"
+  ECR_REPOSITORY: "123456789012.dkr.ecr.us-east-1.amazonaws.com/xperience-climb"
+  ROLE_TO_ASSUME: "arn:aws:iam::123456789012:role/github-actions-app-ecr-role"
+  CLUSTER_REPO: "SEU_USUARIO_OU_ORG/template-cluster-kubernetes-ci-cd"
+
+jobs:
+  build-and-push:
+    name: "Build & Push Workload Image"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Workload Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+          audience: sts.amazonaws.com
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, Tag and Push Image to ECR
+        id: build-image
+        run: |
+          IMAGE_TAG=${{ github.sha }}
+          docker build -t ${{ env.ECR_REPOSITORY }}:$IMAGE_TAG -t ${{ env.ECR_REPOSITORY }}:latest .
+          docker push ${{ env.ECR_REPOSITORY }}:$IMAGE_TAG
+          docker push ${{ env.ECR_REPOSITORY }}:latest
+          echo "image=${{ env.ECR_REPOSITORY }}:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      # Esta etapa clona o repositório do cluster (este repo) e atualiza a tag da imagem no arquivo de deploy / Kustomize
+      - name: Update Cluster Manifest via GitOps Trigger
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Clona o repositório de infraestrutura/cluster
+          git clone https://x-access-token:${{ secrets.G_PERSONAL_ACCESS_TOKEN }}@github.com/${{ env.CLUSTER_REPO }}.git cluster-repo
+          cd cluster-repo/apps-template/overlays/prod/xperience-climb
+
+          # Atualiza o arquivo de deployment ou kustomization com a nova tag da imagem
+          sed -i "s|image: .*xperience-climb:.*|image: ${{ env.ECR_REPOSITORY }}:${{ github.sha }}|g" deployment.yaml
+
+          # Realiza o commit e envia diretamente para a main do cluster-repo (acionando o sync do ArgoCD)
+          git add deployment.yaml
+          git commit -m "chore(gitops): update xperience-climb image to ${{ github.sha }} [skip ci]"
+          git push origin main

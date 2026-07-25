@@ -1,0 +1,11 @@
+apiVersion: aws.upbound.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: aws-provider-config
+spec:
+  credentials:
+    source: WebIdentity
+    webIdentity:
+      # Integrated with EKS Pod Identity / AWS OIDC.
+      # The target role ARN is dynamically injected by the platform from an environment variable!
+      roleARN: ${AWS_CROSSPLANE_PROVIDER_ROLE_ARN}

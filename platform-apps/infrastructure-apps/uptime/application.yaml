@@ -1,0 +1,46 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: prometheus-blackbox-exporter
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: 'https://prometheus-community.github.io/helm-charts'
+    chart: prometheus-blackbox-exporter
+    targetRevision: '9.0.0'
+    helm:
+      values: |
+        config:
+          modules:
+            http_2xx:
+              prober: http
+              timeout: 5s
+              http:
+                valid_http_versions: ["HTTP/1.1", "HTTP/2.0"]
+                valid_status_codes: [200, 204, 301, 302]
+                method: GET
+                no_follow_redirects: false
+                fail_if_ssl_not_verified: true
+        serviceMonitor:
+          enabled: true
+          defaults:
+            labels:
+              release: prometheus
+          targets:
+            - name: api-exemplo-dev
+              url: http://api-exemplo-svc.dev.svc.cluster.local/healthz
+              interval: 30s
+            - name: n8n-platform-tool
+              url: http://n8n-service.platform-tools.svc.cluster.local/healthz
+              interval: 30s
+            - name: xperience-climb-prod
+              url: http://xperience-climb-svc.apps.svc.cluster.local/healthz
+              interval: 30s
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
