@@ -136,7 +136,7 @@ jobs:
           audience: sts.amazonaws.com
 
       - name: OpenTofu Init (Dev)
-        run: tofu init
+        run: tofu init -upgrade
         working-directory: terraform/live/dev
 
       - name: OpenTofu Format Check
@@ -209,7 +209,7 @@ jobs:
           audience: sts.amazonaws.com
 
       - name: OpenTofu Init (Prod)
-        run: tofu init
+        run: tofu init -upgrade
         working-directory: terraform/live/prod
 
       - name: OpenTofu Format Check

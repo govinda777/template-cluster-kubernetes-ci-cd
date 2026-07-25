@@ -483,7 +483,7 @@ if [[ "$RUN_BOOTSTRAP" =~ ^[Yy]$ ]]; then
     echo -e "\n${BLUE}[INFO] Inicializando o OpenTofu/Terraform para o Bootstrap do OIDC...${NC}"
     cd terraform/bootstrap
 
-    $TOFU_BIN init
+    $TOFU_BIN init -upgrade
 
     echo -e "\n${BLUE}[INFO] Aplicando recursos no GCP via OpenTofu/Terraform...${NC}"
     # Carregar credenciais AWS locais se existirem para evitar falha em recursos AWS no bootstrap
