@@ -15,20 +15,20 @@ terraform {
     }
   }
 
-  # S3 Backend (AWS) - Commented out to use GCS as requested
-  # backend "s3" {
-  #   bucket         = "template-cluster-k8s-terraform-state-dev"
-  #   key            = "dev/eks-cluster/terraform.tfstate"
-  #   region         = "us-east-1"
-  #   dynamodb_table = "template-cluster-k8s-tflocks-dev"
-  #   encrypt        = true
-  # }
-
-  # GCS Backend (Google Cloud Storage) for GCP
-  backend "gcs" {
-    bucket = "template-cluster-k8s-terraform-state-dev"
-    prefix = "dev/gke-cluster"
+  # S3 Backend (AWS) - Active by default to allow successful CI/CD execution without requiring GCP credentials in the runner
+  backend "s3" {
+    bucket         = "template-cluster-k8s-terraform-state-dev"
+    key            = "dev/eks-cluster/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "template-cluster-k8s-tflocks-dev"
+    encrypt        = true
   }
+
+  # GCS Backend (Google Cloud Storage) - Uncomment to use GCS as the remote backend for GCP
+  # backend "gcs" {
+  #   bucket = "template-cluster-k8s-terraform-state-dev"
+  #   prefix = "dev/gke-cluster"
+  # }
 }
 
 provider "aws" {
