@@ -66,8 +66,8 @@ resource "aws_eks_cluster" "main" {
 
 # EKS Pod Identity Agent Add-on (Mandatory replacement for IRSA)
 resource "aws_eks_addon" "pod_identity" {
-  cluster_name  = aws_eks_cluster.main.name
-  addon_name    = "eks-pod-identity-agent"
+  cluster_name = aws_eks_cluster.main.name
+  addon_name   = "eks-pod-identity-agent"
   # addon_version is omitted to use the latest compatible version
 
   depends_on = [

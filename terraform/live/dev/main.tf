@@ -33,12 +33,10 @@ module "pod_identity_api_example" {
 }
 
 # ===============================================================================
-# GCP GKE DEPLOYMENT (Enabled by default as per project requirements)
+# GCP GKE DEPLOYMENT (Conditionally enabled to allow pipeline execution without GCP credentials)
 # ===============================================================================
-# Temporarily disabled due to missing GCP credentials
-# Uncomment and configure GCP credentials to enable
-/*
 module "gke" {
+  count        = var.enable_gke ? 1 : 0
   source       = "../../modules/gke"
   project_id   = var.gcp_project_id
   region       = var.gcp_region
@@ -47,7 +45,6 @@ module "gke" {
   vpc_cidr     = "10.2.0.0/16"
   subnet_cidr  = "10.2.1.0/24"
 }
-*/
 
 # ===============================================================================
 # AZURE AKS EXTENSION (DEMO PURPOSES / OPTIONAL)
