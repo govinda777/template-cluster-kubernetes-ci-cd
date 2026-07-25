@@ -8,6 +8,20 @@ RED='\033[0;31m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Restaurar arquivos de provedores originais caso modificados
+restore_providers() {
+    echo -e "\n🧹 Restaurando configurações de backend originais..."
+    if [ -f "terraform/live/dev/providers.tf.backup" ]; then
+        mv "terraform/live/dev/providers.tf.backup" "terraform/live/dev/providers.tf"
+        echo "[OK] Restaurado terraform/live/dev/providers.tf"
+    fi
+    if [ -f "terraform/live/prod/providers.tf.backup" ]; then
+        mv "terraform/live/prod/providers.tf.backup" "terraform/live/prod/providers.tf"
+        echo "[OK] Restaurado terraform/live/prod/providers.tf"
+    fi
+}
+trap restore_providers EXIT
+
 echo -e "${BLUE}========================================================================${NC}"
 echo -e "${BLUE}🚀 Iniciando Execução Local da Pipeline Completa (CI/CD)${NC}"
 echo -e "${BLUE}========================================================================${NC}"
@@ -59,6 +73,35 @@ fi
 echo -e "\n${BLUE}========================================================================${NC}"
 echo -e "${BLUE}🛠️  [02] Executando Automação IaC para Ambiente de Desenvolvimento (Dev)${NC}"
 echo -e "${BLUE}========================================================================${NC}"
+
+# Verificar acessibilidade do backend remoto
+USE_LOCAL_BACKEND_DEV=false
+DEV_BUCKET="template-cluster-k8s-terraform-state-dev"
+echo "-> Verificando acessibilidade do S3 remote backend para Dev..."
+if ! aws s3 ls "s3://$DEV_BUCKET" 2>/dev/null; then
+    echo -e "${YELLOW}⚠️  Aviso: O S3 Bucket de backend remoto ('$DEV_BUCKET') não foi encontrado ou não está acessível.${NC}"
+    echo -e "${YELLOW}Deseja alternar temporariamente para BACKEND LOCAL para prosseguir com o teste local em Dev? [Y/n]:${NC}"
+    read -r CONFIRM_LOCAL
+    CONFIRM_LOCAL=${CONFIRM_LOCAL:-Y}
+    if [[ "$CONFIRM_LOCAL" =~ ^[Yy]$ ]]; then
+        USE_LOCAL_BACKEND_DEV=true
+    fi
+fi
+
+if [ "$USE_LOCAL_BACKEND_DEV" = "true" ]; then
+    echo "-> Configurando backend local temporário para Desenvolvimento..."
+    cp terraform/live/dev/providers.tf terraform/live/dev/providers.tf.backup
+    python3 -c '
+filepath = "terraform/live/dev/providers.tf"
+with open(filepath, "r") as f:
+    content = f.read()
+content = content.replace("backend \"s3\" {", "/* backend \"s3\" {")
+content = content.replace("encrypt        = true\n  }", "encrypt        = true\n  }*/")
+with open(filepath, "w") as f:
+    f.write(content)
+'
+fi
+
 echo "-> Inicializando Dev..."
 cd terraform/live/dev
 $TOFU_BIN init
@@ -81,6 +124,40 @@ cd ../../..
 echo -e "\n${BLUE}========================================================================${NC}"
 echo -e "${BLUE}🏗️  [03] Executando Automação IaC para Ambiente de Produção (Prod)${NC}"
 echo -e "${BLUE}========================================================================${NC}"
+
+# Verificar acessibilidade do backend remoto para Prod
+USE_LOCAL_BACKEND_PROD=false
+PROD_BUCKET="template-cluster-k8s-terraform-state-prod"
+# Tenta deduzir o bucket ou se o do dev já falhou
+if [ "$USE_LOCAL_BACKEND_DEV" = "true" ]; then
+    USE_LOCAL_BACKEND_PROD=true
+else
+    echo "-> Verificando acessibilidade do S3 remote backend para Prod..."
+    if ! aws s3 ls "s3://$PROD_BUCKET" 2>/dev/null; then
+        echo -e "${YELLOW}⚠️  Aviso: O S3 Bucket de backend remoto ('$PROD_BUCKET') não foi encontrado ou não está acessível.${NC}"
+        echo -e "${YELLOW}Deseja alternar temporariamente para BACKEND LOCAL para prosseguir com o teste local em Prod? [Y/n]:${NC}"
+        read -r CONFIRM_LOCAL_PROD
+        CONFIRM_LOCAL_PROD=${CONFIRM_LOCAL_PROD:-Y}
+        if [[ "$CONFIRM_LOCAL_PROD" =~ ^[Yy]$ ]]; then
+            USE_LOCAL_BACKEND_PROD=true
+        fi
+    fi
+fi
+
+if [ "$USE_LOCAL_BACKEND_PROD" = "true" ]; then
+    echo "-> Configurando backend local temporário para Produção..."
+    cp terraform/live/prod/providers.tf terraform/live/prod/providers.tf.backup
+    python3 -c '
+filepath = "terraform/live/prod/providers.tf"
+with open(filepath, "r") as f:
+    content = f.read()
+content = content.replace("backend \"s3\" {", "/* backend \"s3\" {")
+content = content.replace("encrypt        = true\n  }", "encrypt        = true\n  }*/")
+with open(filepath, "w") as f:
+    f.write(content)
+'
+fi
+
 echo "-> Inicializando Prod..."
 cd terraform/live/prod
 $TOFU_BIN init
