@@ -3,6 +3,10 @@
 # Repositório: template-cluster-kubernetes-ci-cd
 # ==============================================================================
 
+-include .aws_profile_env
+export AWS_PROFILE
+export AWS_REGION
+
 SHELL := /usr/bin/env bash
 
 .PHONY: help config config-aws config-gcp config-azure aws gcp azure

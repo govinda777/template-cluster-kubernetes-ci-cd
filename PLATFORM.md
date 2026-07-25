@@ -119,3 +119,66 @@ A política `gateway-api-enforcement.rego` bloqueia sumariamente manifestos que 
 - **Observabilidade**: O monitoramento é baseado no ecossistema Prometheus e Grafana, fornecendo dashboards integrados para acompanhar métricas vitais como uso de CPU, memória, latência de rede e restart de pods.
 - **Autoscaling (HPA & Karpenter)**: A escalabilidade ocorre de forma inteligente em duas camadas. Se a CPU passar de 75%, o HPA cria novas réplicas de Pods. Se faltar recursos físicos nos servidores, o Karpenter aloca de forma dinâmica e imediata novas máquinas EC2 otimizadas em menos de 60 segundos.
 - **Segurança de Borda (cert-manager & TLS)**: O ciclo de vida dos certificados SSL/TLS da plataforma é gerenciado de forma automatizada pelo `cert-manager` integrado com Let's Encrypt ou AWS Certificate Manager (ACM).
+
+---
+
+## 🛠️ 8. Guia de Configuração e Autenticação Local (AWS SSO)
+
+Para garantir máxima segurança operacional e aderência às melhores práticas do mercado, a plataforma adota a autenticação **exclusiva via AWS SSO** (AWS IAM Identity Center). Isto elimina a necessidade de chaves de acesso estáticas e reduz o risco de credenciais vazadas.
+
+### 📋 Passo a Passo para Configuração
+
+#### Passo 1: Configuração do AWS IAM Identity Center no Portal AWS
+1. Acesse o console da AWS e ative o **AWS IAM Identity Center**.
+2. No menu lateral, crie seu usuário em **Users** e associe-o a um grupo ou conta.
+3. Em **AWS accounts**, selecione a conta que deseja gerenciar e associe o conjunto de permissões desejado (reconhecido como **AdministratorAccess**).
+4. Copie a **AWS SSO Start URL** gerada pelo console (exemplo: `https://d-9066799629.awsapps.com/start`).
+* 🔗 **Link de Apoio:** [AWS IAM Identity Center Quick Start](https://docs.aws.amazon.com/singlesignon/latest/userguide/get-started-with-identity-center.html)
+
+#### Passo 2: Configuração e Login no AWS CLI Local
+1. Com a sua Start URL e Região em mãos, execute no seu terminal o assistente interativo da plataforma:
+   ```bash
+   make config aws
+   ```
+   *(ou rode diretamente o comando do AWS CLI: `aws configure sso`)*
+2. Quando solicitado, preencha as informações:
+   - **SSO session name**: `sso-session` (ou qualquer nome de sua preferência)
+   - **SSO start URL**: `https://d-xxxxxxxxxx.awsapps.com/start` (sua Start URL obtida no Passo 1)
+   - **SSO region**: `us-east-1` (região onde o SSO está ativado)
+3. O AWS CLI abrirá automaticamente uma página no seu navegador web para você autorizar o acesso. Insira as credenciais do seu usuário do IAM Identity Center e valide o código de segurança do terminal.
+4. Ao concluir, o terminal exibirá as contas e roles disponíveis. Selecione a sua conta e a role de Administrador.
+5. **Atenção:** O AWS CLI criará um perfil nomeado dinâmico em `~/.aws/config`, no formato parecido com `AdministratorAccess-533267373350`.
+* 🔗 **Link de Apoio:** [Configuring the AWS CLI to use AWS IAM Identity Center](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sso.html)
+
+#### Passo 3: Associação Automática e Persistência de Ambiente
+1. Imediatamente após a conclusão do wizard do CLI, o nosso script de automação (`scripts/config-aws.sh`) fará o parsing inteligente do arquivo `~/.aws/config` para extrair o último perfil configurado.
+2. O terminal solicitará sua confirmação para utilizar o perfil detectado:
+   ```text
+   [INFO] Perfil SSO detectado automaticamente: AdministratorAccess-533267373350
+   Deseja utilizar este perfil? [Y/n] (padrão: Y): Y
+   ```
+3. O script salvará essas definições no arquivo local `.aws_profile_env` (que já está devidamente ignorado no `.gitignore`):
+   ```ini
+   AWS_PROFILE=AdministratorAccess-533267373350
+   AWS_REGION=us-east-1
+   ```
+4. O `Makefile` importará silenciosamente este arquivo por meio de `-include .aws_profile_env` e exportará as variáveis globais `AWS_PROFILE` e `AWS_REGION` de forma automatizada.
+5. Toda e qualquer chamada subsequente dos comandos `make` (incluindo o bootstrap do OIDC com OpenTofu/Terraform) herdarão o perfil correto de forma nativa e sem necessidade de novas intervenções.
+
+#### Passo 4: Renovação Automática da Sessão (Self-Healing)
+Caso a sua sessão SSO expire após o limite estabelecido de tempo (geralmente entre 1 e 12 horas), os scripts de automação do Makefile detectarão o problema no momento da validação com o STS (`aws sts get-caller-identity`) e iniciarão automaticamente o fluxo de re-autenticação:
+```bash
+aws sso login --profile "$AWS_PROFILE"
+```
+Isso garante um fluxo sem interrupções e com segurança impecável.
+
+#### Passo 5: Armazenamento de Segredos e Variáveis no GitHub CI/CD
+Após o provisionamento bem-sucedido dos recursos de Federação OIDC via OpenTofu/Terraform, o script utiliza o GitHub CLI (`gh`) para salvar de forma automática e segura as variáveis de ambiente e chaves da AWS.
+* 🔗 **Painel Oficial dos Secrets no GitHub:** [GitHub Actions Secrets & Variables Settings](https://github.com/govinda777/template-cluster-kubernetes-ci-cd/settings/secrets/actions)
+
+Os segredos criados e mantidos automaticamente são:
+- **`AWS_REGION`**: Região principal da AWS para provisionamento.
+- **`AWS_REGION_PROD`**: Região direcionada ao ambiente produtivo.
+- **`AWS_ROLE_TO_ASSUME_DEV`**: ARN da Role do IAM para o ambiente de Desenvolvimento (Dev).
+- **`AWS_ROLE_TO_ASSUME_PROD`**: ARN da Role do IAM para o ambiente de Produção (Prod).
+- **`AWS_ROLE_TO_ASSUME_TEST`**: ARN da Role do IAM para o ambiente de Testes (Test).
