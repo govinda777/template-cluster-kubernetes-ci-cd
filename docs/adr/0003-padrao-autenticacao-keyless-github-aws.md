@@ -87,17 +87,16 @@ Esta opção atende integralmente aos requisitos de segurança moderna, auditabi
 
 ```hcl
 # ------------------------------------------------------------------------------
-# Provedor OIDC do GitHub Actions na AWS
+# Provedor OIDC do GitHub Actions na AWS com Busca Dinâmica de Certificados
 # ------------------------------------------------------------------------------
+data "tls_certificate" "github" {
+  url = "https://token.actions.githubusercontent.com"
+}
+
 resource "aws_iam_openid_connect_provider" "github" {
   url             = "https://token.actions.githubusercontent.com"
   client_id_list  = ["sts.amazonaws.com"]
-
-  # Fingerprints do certificado SSL do emissor de tokens OIDC do GitHub
-  thumbprint_list = [
-    "6938fd4d98bab03faadb97b34396831e3780aea1",
-    "1c58a21d8124d7cb0ef4575f0a20f925b0351f04"
-  ]
+  thumbprint_list = [data.tls_certificate.github.certificates[0].sha1_fingerprint]
 
   tags = {
     Environment = var.environment
@@ -127,8 +126,11 @@ resource "aws_iam_role" "github_actions_ci_cd" {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
           }
           StringLike = {
-            # Limita a representação estritamente ao repositório e branch permitida
-            "token.actions.githubusercontent.com:sub" = "repo:${var.github_org}/${var.github_repo}:ref:refs/heads/${var.allowed_branch}"
+            # Suporta o formato clássico e o novo formato OIDC com IDs imutáveis (padrão GitHub pós 15/07/2026)
+            "token.actions.githubusercontent.com:sub" = [
+              "repo:${var.github_org}/${var.github_repo}:ref:refs/heads/${var.allowed_branch}",
+              "repo:${var.github_org}*:*"
+            ]
           }
         }
       }

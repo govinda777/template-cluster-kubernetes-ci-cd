@@ -2,14 +2,16 @@ provider "aws" {
   region = var.aws_region
 }
 
+# Dynamic TLS certificate data source to automatically fetch current GitHub thumbprints
+data "tls_certificate" "github" {
+  url = "https://token.actions.githubusercontent.com"
+}
+
 # 1. OIDC Provider for GitHub Actions
 resource "aws_iam_openid_connect_provider" "github" {
-  url            = "https://token.actions.githubusercontent.com"
-  client_id_list = ["sts.amazonaws.com"]
-  thumbprint_list = [
-    "6938fd4d98bab03faadb97b34396831e3780aea1",
-    "1c58a21d8124d7cb0ef4575f0a20f925b0351f04"
-  ]
+  url             = "https://token.actions.githubusercontent.com"
+  client_id_list  = ["sts.amazonaws.com"]
+  thumbprint_list = [data.tls_certificate.github.certificates[0].sha1_fingerprint]
 }
 
 # Trust policy document for GitHub OIDC federated authentication
@@ -32,7 +34,10 @@ data "aws_iam_policy_document" "github_actions_assume_role_policy" {
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_org_repo}:*"]
+      values = [
+        "repo:${var.github_org_repo}:*",
+        "repo:${split("/", var.github_org_repo)[0]}*:*"
+      ]
     }
   }
 }
