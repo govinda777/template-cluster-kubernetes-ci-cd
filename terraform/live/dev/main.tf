@@ -23,12 +23,12 @@ module "eks" {
 }
 
 # Dev environment specific Pod Identity mapping for example API
-module "pod_identity_api_exemplo" {
+module "pod_identity_api_example" {
   source = "../../modules/pod-identity"
 
   cluster_name         = module.eks.cluster_name
   environment          = var.environment
-  service_account_name = "api-exemplo-sa"
+  service_account_name = "api-example-sa"
   namespace            = "dev"
 }
 

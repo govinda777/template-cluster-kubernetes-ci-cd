@@ -73,9 +73,9 @@ func TestE2ECluster(t *testing.T) {
 
 	// 7. Verify Pods and Service are running correctly
 	t.Log("Verifying EKS Pods and Service...")
-	k8s.WaitUntilPodAvailable(t, options, "api-exemplo", 15, 5*time.Second)
+	k8s.WaitUntilPodAvailable(t, options, "api-example", 15, 5*time.Second)
 
-	pods, err := k8s.ListPodsE(t, options, metav1.ListOptions{LabelSelector: "app=api-exemplo"})
+	pods, err := k8s.ListPodsE(t, options, metav1.ListOptions{LabelSelector: "app=api-example"})
 	require.NoError(t, err)
 	require.NotEmpty(t, pods)
 
@@ -93,7 +93,7 @@ func TestE2ECluster(t *testing.T) {
 	}
 
 	// 9. Verify local or external service HTTP accessibility
-	serviceName := "api-exemplo-svc"
+	serviceName := "api-example-svc"
 	k8s.WaitUntilServiceAvailable(t, options, serviceName, 10, 5*time.Second)
 
 	// Formulate HTTP check via Terratest's port-forwarding capabilities or http-helper

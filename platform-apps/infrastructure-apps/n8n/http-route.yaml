@@ -8,7 +8,7 @@ spec:
     - name: main-aws-alb-gateway
       namespace: kube-system
   hostnames:
-    - "n8n.suaempresa.com"
+    - "n8n.yourcompany.com"
   rules:
     - matches:
         - path:

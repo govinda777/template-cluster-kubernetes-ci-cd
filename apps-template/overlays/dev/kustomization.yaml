@@ -4,7 +4,7 @@ kind: Kustomization
 resources:
   - ../../base
 
-namespace: prod
+namespace: dev
 
 patches:
   - target:
@@ -13,9 +13,9 @@ patches:
     patch: |-
       - op: replace
         path: /spec/replicas
-        value: 3
+        value: 1
       - op: add
         path: /spec/template/spec/containers/0/env
         value:
           - name: ENV
-            value: "prod"
+            value: "dev"

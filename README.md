@@ -47,7 +47,7 @@ template-cluster-kubernetes-ci-cd/
 │   │   └── pod-identity/                  # Mapeamentos e papéis do EKS Pod Identity
 │   └── live/                              # Instanciação por ambientes separados
 │       ├── dev/                           # Ambiente de Desenvolvimento (us-east-1 / GCP us-central1)
-│       └── prod/                          # Ambiente de Produção (us-west-2 / GCP us-west1)
+│       └── prod/                          # Ambiente de Production (us-west-2 / GCP us-west1)
 ├── crossplane/
 │   ├── provider-configs/                  # Configurações de provedores do Crossplane (AWS WebIdentity)
 │   └── compositions/                      # Compositions de banco de dados gerenciados (AWS RDS Postgres)
@@ -111,7 +111,7 @@ Para que o GitHub Actions gerencie sua infraestrutura AWS de forma segura sem cr
        {
          "Effect": "Allow",
          "Principal": {
-           "Federated": "arn:aws:iam::SUA_CONTA_ID:oidc-provider/token.actions.githubusercontent.com"
+           "Federated": "arn:aws:iam::YOUR_ACCOUNT_ID:oidc-provider/token.actions.githubusercontent.com"
          },
          "Action": "sts:AssumeRoleWithWebIdentity",
          "Condition": {
@@ -119,7 +119,7 @@ Para que o GitHub Actions gerencie sua infraestrutura AWS de forma segura sem cr
              "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
            },
            "StringLike": {
-             "token.actions.githubusercontent.com:sub": "repo:SEU_USUARIO_OU_ORG/template-cluster-kubernetes-ci-cd:*"
+             "token.actions.githubusercontent.com:sub": "repo:YOUR_ORG_OR_USER/template-cluster-kubernetes-ci-cd:*"
            }
          }
        }
@@ -180,14 +180,14 @@ Com o cluster ativo e o Kubeconfig configurado, podemos inicializar o fluxo de G
 
 - **AWS Load Balancer Controller & Gateway API:** Provisiona a classe de rede `Gateway` nativa.
 - **PostgreSQL (Bitnami):** Implantado na namespace `database` usando persistência de volumes, servindo de banco para serviços como o n8n.
-- **n8n Workflow Automation:** Instalado na namespace `platform-tools`, conectado ao PostgreSQL via Secret segura, e exposto externamente na URL `n8n.suaempresa.com` através da Gateway API (`HTTPRoute`).
-- **XperienceClimb (Aplicação Prod):** Localizado em `apps-template/overlays/prod/xperience-climb/`, representa a sua aplicação real rodando em Produção com alta disponibilidade (2 réplicas) utilizando Pod Identity para acessar serviços AWS adicionais sem chaves estáticas, e exposta via HTTPRoute em `xperience.suaempresa.com`.
+- **n8n Workflow Automation:** Instalado na namespace `platform-tools`, conectado ao PostgreSQL via Secret segura, e exposto externamente na URL `n8n.yourcompany.com` através da Gateway API (`HTTPRoute`).
+- **XperienceClimb (Aplicação Prod):** Localizado em `apps-template/overlays/prod/xperience-climb/`, representa a sua aplicação real rodando em Produção com alta disponibilidade (2 réplicas) utilizando Pod Identity para acessar serviços AWS adicionais sem chaves estáticas, e exposta via HTTPRoute em `xperience.yourcompany.com`.
 
 ---
 
 ## 📖 Como Instalar e Expor Novas APIs/Serviços no Cluster (Guia de Onboarding)
 
-Esta seção detalha o fluxo de onboarding para desenvolvedores. Para implantar uma nova API ou microsserviço (ex: `api-pagamentos`), siga os **4 passos** descritos abaixo:
+Esta seção detalha o fluxo de onboarding para desenvolvedores. Para implantar uma nova API ou microsserviço (ex: `api-payments`), siga os **4 passos** descritos abaixo:
 
 ### Fluxo de Trabalho de Onboarding
 
@@ -221,7 +221,7 @@ Esta seção detalha o fluxo de onboarding para desenvolvedores. Para implantar 
 ```
 
 #### Passo 1: Criar Manifestos baseados em `apps-template/`
-Crie uma pasta para a sua nova aplicação em `apps-template/overlays/dev/api-pagamentos` contendo os seguintes arquivos básicos:
+Crie uma pasta para a sua nova aplicação em `apps-template/overlays/dev/api-payments` contendo os seguintes arquivos básicos:
 
 ##### 1. `deployment.yaml` + `ServiceAccount`
 Caso sua aplicação precisa acessar recursos AWS, declare a `ServiceAccount` para que ela seja associada ao **EKS Pod Identity**:
@@ -229,28 +229,28 @@ Caso sua aplicação precisa acessar recursos AWS, declare a `ServiceAccount` pa
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: api-pagamentos-sa
+  name: api-payments-sa
   namespace: dev
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: api-pagamentos
+  name: api-payments
   namespace: dev
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: api-pagamentos
+      app: api-payments
   template:
     metadata:
       labels:
-        app: api-pagamentos
+        app: api-payments
     spec:
-      serviceAccountName: api-pagamentos-sa
+      serviceAccountName: api-payments-sa
       containers:
         - name: api
-          image: 123456789012.dkr.ecr.us-east-1.amazonaws.com/api-pagamentos:v1.0.0
+          image: 123456789012.dkr.ecr.us-east-1.amazonaws.com/api-payments:v1.0.0
           ports:
             - containerPort: 8080
 ```
@@ -260,12 +260,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: api-pagamentos-svc
+  name: api-payments-svc
   namespace: dev
 spec:
   type: ClusterIP
   selector:
-    app: api-pagamentos
+    app: api-payments
   ports:
     - port: 80
       targetPort: 8080
@@ -277,21 +277,21 @@ Associe a sua rota ao `Gateway` gerenciado pelo AWS Load Balancer Controller:
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: api-pagamentos-route
+  name: api-payments-route
   namespace: dev
 spec:
   parentRefs:
     - name: main-aws-alb-gateway
       namespace: kube-system
   hostnames:
-    - "api.dev.suaempresa.com"
+    - "api.dev.yourcompany.com"
   rules:
     - matches:
         - path:
             type: PathPrefix
-            value: /v1/pagamentos
+            value: /v1/payments
       backendRefs:
-        - name: api-pagamentos-svc
+        - name: api-payments-svc
           port: 80
 ```
 
@@ -302,14 +302,14 @@ Crie um arquivo Application no ArgoCD declarando sua nova app ou configure o seu
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: api-pagamentos-dev
+  name: api-payments-dev
   namespace: argocd
 spec:
   project: default
   source:
-    repoURL: 'https://github.com/govinda777/template-cluster-kubernetes-ci-cd.git'
+    repoURL: 'https://github.com/your-org/template-cluster-kubernetes-ci-cd.git'
     targetRevision: HEAD
-    path: 'apps-template/overlays/dev/api-pagamentos'
+    path: 'apps-template/overlays/dev/api-payments'
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: dev
@@ -322,7 +322,7 @@ spec:
 #### Passo 3: Sincronização Automática
 Realize o commit e envie um Pull Request para a branch `main`. Quando o PR for mesclado:
 - O ArgoCD detecta a nova declaração e instala os manifestos automaticamente.
-- O AWS Load Balancer Controller configura dinamicamente o ALB na AWS, roteando o tráfego de `/v1/pagamentos` para os pods da `api-pagamentos`.
+- O AWS Load Balancer Controller configura dinamicamente o ALB na AWS, roteando o tráfego de `/v1/payments` para os pods da `api-payments`.
 - O Pod Identity injeta os tokens AWS STS válidos no runtime do pod de forma 100% segura.
 
 ---
@@ -361,7 +361,7 @@ sequenceDiagram
     participant N8N as n8n (Platform App Workflow)
 
     loop Cada 60 segundos
-        UR->>GW: GET https://xperience.suaempresa.com/healthz
+        UR->>GW: GET https://xperience.yourcompany.com/healthz
         GW->>APP: Roteia para Pod (/healthz)
         APP-->>GW: HTTP 200 OK (Saudável)
         GW-->>UR: Retorna HTTP 200 OK
@@ -376,7 +376,7 @@ sequenceDiagram
 
 **Configuração do UptimeRobot:**
 - **Tipo de Monitoramento**: HTTP(s).
-- **URL**: `https://xperience.suaempresa.com/healthz`.
+- **URL**: `https://xperience.yourcompany.com/healthz`.
 - **Intervalo de Monitoramento**: 1 minuto.
 - **Alertas**: Em caso de falha, dispara uma chamada HTTP POST (Webhook) para o n8n ou envia diretamente um e-mail/notificação no canal do Slack.
 
@@ -486,7 +486,7 @@ Caso ocorra um desastre na AWS, o failover operacional é executado através dos
 2. **Atualizar Configuração de Secrets**:
    - Ajuste as Secrets do Kubernetes no cluster secundário (`GCP`) via ArgoCD/External Secrets para apontar a URL de conexão para o novo Endpoint Master.
 3. **Mudar Direcionamento de Tráfego GSLB (DNS)**:
-   - Altere a rota de tráfego do DNS (Cloudflare/Route53) apontando o tráfego principal de `xperience.suaempresa.com` para o endereço IP do Load Balancer do GCP GKE.
+   - Altere a rota de tráfego do DNS (Cloudflare/Route53) apontando o tráfego principal de `xperience.yourcompany.com` para o endereço IP do Load Balancer do GCP GKE.
 4. **Verificação de Saúde**:
    - Rode o teste automatizado para confirmar que os pods estão saudáveis, respondendo a requisições com código HTTP 200, e processando escritas.
 
