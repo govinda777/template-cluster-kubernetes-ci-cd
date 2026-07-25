@@ -1,0 +1,104 @@
+name: "02 - Infrastructure CI/CD (OpenTofu)"
+
+on:
+  push:
+    branches:
+      - 'main'
+      - 'feature/**'
+      - 'bugfix/**'
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/02-infrastructure-ci-cd.yml'
+  pull_request:
+    branches:
+      - 'main'
+      - 'feature/**'
+      - 'bugfix/**'
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/02-infrastructure-ci-cd.yml'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  tofu-dev:
+    name: "OpenTofu - Dev Environment"
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: "us-east-1"
+      ROLE_TO_ASSUME: "arn:aws:iam::123456789012:role/github-actions-eks-dev-role"
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: "1.8.2"
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+          audience: sts.amazonaws.com
+
+      - name: OpenTofu Init (Dev)
+        run: tofu init
+        working-directory: terraform/live/dev
+
+      - name: OpenTofu Format Check
+        run: tofu fmt -check
+        working-directory: terraform/live/dev
+
+      - name: OpenTofu Plan (Dev)
+        run: tofu plan -no-color -out=tfplan
+        working-directory: terraform/live/dev
+
+      - name: OpenTofu Apply (Dev)
+        # Roda o Apply apenas quando for um push direto ou merge na main
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: tofu apply -auto-approve tfplan
+        working-directory: terraform/live/dev
+
+  tofu-prod:
+    name: "OpenTofu - Prod Environment"
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: "us-west-2"
+      ROLE_TO_ASSUME: "arn:aws:iam::987654321098:role/github-actions-eks-prod-role"
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: "1.8.2"
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+          audience: sts.amazonaws.com
+
+      - name: OpenTofu Init (Prod)
+        run: tofu init
+        working-directory: terraform/live/prod
+
+      - name: OpenTofu Format Check
+        run: tofu fmt -check
+        working-directory: terraform/live/prod
+
+      - name: OpenTofu Plan (Prod)
+        run: tofu plan -no-color -out=tfplan
+        working-directory: terraform/live/prod
+
+      - name: OpenTofu Apply (Prod)
+        # Roda o Apply apenas quando for um push direto ou merge na main
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: tofu apply -auto-approve tfplan
+        working-directory: terraform/live/prod

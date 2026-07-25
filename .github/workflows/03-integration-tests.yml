@@ -1,0 +1,64 @@
+name: "03 - Integration Tests (Terratest)"
+
+on:
+  push:
+    branches:
+      - 'main'
+      - 'feature/**'
+      - 'bugfix/**'
+    paths:
+      - 'tests/**'
+      - 'apps-template/**'
+      - '.github/workflows/03-integration-tests.yml'
+  pull_request:
+    branches:
+      - 'main'
+      - 'feature/**'
+      - 'bugfix/**'
+    paths:
+      - 'tests/**'
+      - 'apps-template/**'
+      - '.github/workflows/03-integration-tests.yml'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  integration-test:
+    name: "Run Terratest Integration Suite"
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: "us-east-1"
+      ROLE_TO_ASSUME: "arn:aws:iam::123456789012:role/github-actions-eks-test-role"
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Environment
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: "1.8.2"
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+          audience: sts.amazonaws.com
+
+      - name: Install Go Dependencies
+        run: |
+          cd tests/integration
+          go mod init github.com/govinda777/template-cluster-kubernetes-ci-cd/tests/integration || true
+          go mod tidy
+
+      - name: Run Terratest Integration Tests
+        run: |
+          cd tests/integration
+          go test -v -timeout 60m -run TestE2ECluster
