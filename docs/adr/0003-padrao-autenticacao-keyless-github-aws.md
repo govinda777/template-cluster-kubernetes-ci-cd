@@ -87,18 +87,16 @@ Esta opção atende integralmente aos requisitos de segurança moderna, auditabi
 
 ```hcl
 # ------------------------------------------------------------------------------
-# Provedor OIDC do GitHub Actions na AWS
+# Provedor OIDC do GitHub Actions na AWS com Busca Dinâmica de Certificados
 # ------------------------------------------------------------------------------
+data "tls_certificate" "github" {
+  url = "https://token.actions.githubusercontent.com"
+}
+
 resource "aws_iam_openid_connect_provider" "github" {
   url             = "https://token.actions.githubusercontent.com"
   client_id_list  = ["sts.amazonaws.com"]
-
-  # Fingerprints do certificado SSL do emissor de tokens OIDC do GitHub
-  thumbprint_list = [
-    "6938fd4d98bab03faadb97b34396831e3780aea1",
-    "1c58a3a8518e8759bf075b76b750d4f2df264fcd",
-    "227203b5317f3818cab5b5ce596132bf36748c0e"
-  ]
+  thumbprint_list = [data.tls_certificate.github.certificates[0].sha1_fingerprint]
 
   tags = {
     Environment = var.environment
