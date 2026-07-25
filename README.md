@@ -93,7 +93,15 @@ template-cluster-kubernetes-ci-cd/
 
 ### 1. Configurando o OIDC da AWS no GitHub
 
-Para que o GitHub Actions se comunique com a AWS com segurança de forma sem senha e assuma apenas as permissões estritamente necessárias para provisionar a plataforma, siga as regras de **Princípio de Acesso Mínimo** (Least Privilege) detalhadas abaixo:
+Atualmente, adotamos a estratégia **Keyless federada** via OpenID Connect (OIDC) para autenticação do GitHub Actions com a AWS (definida e padronizada formalmente na **[ADR-003](docs/adr/0003-padrao-autenticacao-keyless-github-aws.md)**). Isso elimina por completo o uso de chaves estáticas de longa duração no GitHub Secrets, permitindo que a pipeline assuma roles do IAM de curta duração via AWS STS.
+
+#### ⚠️ O Problema do "Ovo e da Galinha" (Chicken-and-Egg Problem) e a Mitigação
+Há um desafio arquitetural clássico de *bootstrap* inicial: o Terraform/OpenTofu precisa do OIDC configurado na AWS para poder rodar na pipeline e gerenciar a infraestrutura. No entanto, o próprio módulo de OIDC e IAM Roles é gerenciado via Terraform.
+
+**Como mitigar isso:**
+1. **Configuração Manual ou Execução Local Inicial:** Um engenheiro/arquiteto de nuvem com privilégios administrativos temporários executa o provisionamento do módulo OIDC localmente uma única vez (ou cria o provedor OIDC e a role inicial via console/CLI).
+2. Para auxiliar nessa e em outras tarefas de autenticação e configuração locais de forma padronizada e simplificada, utilize a interface do **Makefile** do projeto. Veja detalhes na seção [Automação e Configuração Local de Provedores de Nuvem](#automacao-e-configuracao-local-de-provedores-de-nuvem) abaixo.
+3. Uma vez criada a role e o provedor OIDC, a pipeline do GitHub Actions passa a ser 100% autônoma e declarativa.
 
 #### Passo A: Criar o Provedor OIDC (Uma única vez por Conta AWS)
 1. Acesse o Console AWS -> **IAM** -> **Identity Providers** -> **Add Provider**.
@@ -157,10 +165,32 @@ Se qualquer uma dessas variáveis estiver vazia ou ausente, a pipeline de CI/CD 
 
 ---
 
-### 2. Inicializando e Executando o OpenTofu Localmente
+### 2. Automação e Configuração Local de Provedores de Nuvem
+
+Para facilitar o bootstrap, o desenvolvimento local e a integração com múltiplos provedores de nuvem, o repositório conta com uma interface unificada baseada em **`Makefile`** e scripts interativos na pasta `scripts/`.
+
+Antes de rodar comandos do OpenTofu ou Terraform localmente, execute o utilitário de configuração específico para a sua nuvem ativa:
+
+```bash
+# Para configurar e autenticar na AWS (suporta AWS CLI padrão e AWS SSO login)
+make config aws
+
+# Para configurar e autenticar no GCP (realiza gcloud login, ADC e define o Project ID)
+make config gcp
+
+# Para configurar e autenticar na Azure (realiza az login e seleciona a Subscription ativa)
+make config azure
+```
+
+> **Nota:** Você também pode utilizar a sintaxe com hífen, ex: `make config-aws`, `make config-gcp` ou `make config-azure`. Todos os scripts possuem validação de dependências e tratamento automático de erros.
+
+### 3. Inicializando e Executando o OpenTofu Localmente
 Se preferir rodar as ferramentas localmente usando o binário `tofu` (ou `terraform`):
 
 ```bash
+# Primeiro, configure o provedor desejado usando o Makefile (ex: AWS)
+make config aws
+
 # Navegue até o diretório do ambiente desejado (ex: dev)
 cd terraform/live/dev
 
