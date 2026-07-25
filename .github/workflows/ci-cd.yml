@@ -80,7 +80,7 @@ jobs:
       AWS_REGION: ${{ secrets.AWS_REGION }}
       ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME_DEV }}
     steps:
-      # OTIMIZAÇÃO 1: Validação Prévia Imediata com link explicativo da documentação oficial
+      # OTIMIZAÇÃO 1: Validação Prévia Imediata com links precisos da documentação interna e externa
       - name: Pre-flight Check - Validate Required Secrets
         run: |
           MISSING_VARS=0
@@ -96,7 +96,8 @@ jobs:
           fi
 
           if [ $MISSING_VARS -eq 1 ]; then
-            echo "::warning title=Instruções de Configuração::Consulte as instruções de criação de secrets e configuração OIDC no README.md do projeto ou na documentação da AWS: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc.html"
+            echo "::warning title=Documentação do Projeto::Veja como configurar as variáveis de ambiente e secrets no README.md do projeto: https://github.com/${{ github.repository }}/blob/main/README.md#1-configurando-o-oidc-da-aws-no-github"
+            echo "::warning title=Documentação de IAM Role (AWS)::Veja como criar a relação de confiança OIDC na AWS: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc.html"
             echo "::error::Validação de ambiente de desenvolvimento falhou. Interrompendo a pipeline antes da execução dos passos pesados."
             exit 1
           fi
@@ -141,7 +142,7 @@ jobs:
       AWS_REGION: ${{ secrets.AWS_REGION_PROD }}
       ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME_PROD }}
     steps:
-      # OTIMIZAÇÃO 2: Validação Prévia Imediata para Prod
+      # OTIMIZAÇÃO 2: Validação Prévia Imediata para Prod com links precisos da documentação interna e externa
       - name: Pre-flight Check - Validate Required Secrets
         run: |
           MISSING_VARS=0
@@ -157,7 +158,8 @@ jobs:
           fi
 
           if [ $MISSING_VARS -eq 1 ]; then
-            echo "::warning title=Instruções de Configuração::Consulte as instruções de criação de secrets e configuração OIDC no README.md do projeto ou na documentação da AWS: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc.html"
+            echo "::warning title=Documentação do Projeto::Veja como configurar as variáveis de ambiente e secrets no README.md do projeto: https://github.com/${{ github.repository }}/blob/main/README.md#1-configurando-o-oidc-da-aws-no-github"
+            echo "::warning title=Documentação de IAM Role (AWS)::Veja como criar a relação de confiança OIDC na AWS: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc.html"
             echo "::error::Validação de ambiente de produção falhou. Interrompendo a pipeline antes da execução dos passos pesados."
             exit 1
           fi
@@ -202,7 +204,7 @@ jobs:
       AWS_REGION: ${{ secrets.AWS_REGION }}
       ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME_TEST }}
     steps:
-      # OTIMIZAÇÃO 3: Validação Prévia Imediata para Testes
+      # OTIMIZAÇÃO 3: Validação Prévia Imediata para Testes com links precisos da documentação interna e externa
       - name: Pre-flight Check - Validate Required Secrets
         run: |
           MISSING_VARS=0
@@ -218,7 +220,8 @@ jobs:
           fi
 
           if [ $MISSING_VARS -eq 1 ]; then
-            echo "::warning title=Instruções de Configuração::Consulte as instruções de criação de secrets e configuração OIDC no README.md do projeto ou na documentação da AWS: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc.html"
+            echo "::warning title=Documentação do Projeto::Veja como configurar as variáveis de ambiente e secrets no README.md do projeto: https://github.com/${{ github.repository }}/blob/main/README.md#1-configurando-o-oidc-da-aws-no-github"
+            echo "::warning title=Documentação de IAM Role (AWS)::Veja como criar a relação de confiança OIDC na AWS: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc.html"
             echo "::error::Validação de ambiente de testes falhou. Interrompendo a pipeline antes da execução dos passos pesados."
             exit 1
           fi
