@@ -16,6 +16,9 @@ permissions:
   id-token: write
   contents: read
 
+env:
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: "true"
+
 jobs:
   lint-and-security:
     name: "01 - Static Linting & Security"
@@ -69,8 +72,8 @@ jobs:
     needs: lint-and-security
     runs-on: ubuntu-latest
     env:
-      AWS_REGION: "us-east-1"
-      ROLE_TO_ASSUME: "arn:aws:iam::123456789012:role/github-actions-eks-dev-role"
+      AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+      ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME_DEV || 'arn:aws:iam::123456789012:role/github-actions-eks-dev-role' }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -114,8 +117,8 @@ jobs:
     needs: tofu-dev
     runs-on: ubuntu-latest
     env:
-      AWS_REGION: "us-west-2"
-      ROLE_TO_ASSUME: "arn:aws:iam::987654321098:role/github-actions-eks-prod-role"
+      AWS_REGION: ${{ secrets.AWS_REGION_PROD || 'us-west-2' }}
+      ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME_PROD || 'arn:aws:iam::987654321098:role/github-actions-eks-prod-role' }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -159,8 +162,8 @@ jobs:
     needs: tofu-prod
     runs-on: ubuntu-latest
     env:
-      AWS_REGION: "us-east-1"
-      ROLE_TO_ASSUME: "arn:aws:iam::123456789012:role/github-actions-eks-test-role"
+      AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+      ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME_TEST || 'arn:aws:iam::123456789012:role/github-actions-eks-test-role' }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
