@@ -1,0 +1,44 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: velero
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: 'https://vmware-tanzu.github.io/helm-charts'
+    chart: velero
+    targetRevision: '7.2.0'
+    helm:
+      values: |
+        configuration:
+          provider: aws
+          backupStorageLocation:
+            name: aws
+            bucket: template-cluster-k8s-velero-backups
+            config:
+              region: us-east-1
+        credentials:
+          useSecret: true
+          # We use Pod Identity/OIDC so Velero's service account doesn't need hardcoded keys!
+        serviceAccount:
+          server:
+            create: true
+            name: velero-server
+            annotations:
+              # Pod Identity will map this SA automatically
+        initContainers:
+          - name: velero-plugin-for-aws
+            image: velero/velero-plugin-for-aws:v1.10.0
+            volumeMounts:
+              - mountPath: /target
+                name: plugins
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: velero
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

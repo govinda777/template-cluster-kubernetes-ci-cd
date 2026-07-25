@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cilium-clustermesh-config
+  namespace: kube-system
+data:
+  # This config maps AWS and GCP cluster configurations for cross-cluster mesh connections
+  clustermesh-config: |
+    clusters:
+      - name: aws-eks-primary
+        address: clustermesh-apiserver.aws.suaempresa.com
+        port: 2379
+      - name: gcp-gke-secondary
+        address: clustermesh-apiserver.gcp.suaempresa.com
+        port: 2379

@@ -1,0 +1,83 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: composite-postgres-db
+  labels:
+    provider: aws
+    db: postgres
+spec:
+  compositeDeletePolicy: Background
+  resources:
+    - name: rdsInstance
+      base:
+        apiVersion: database.aws.upbound.io/v1beta1
+        kind: RDSInstance
+        spec:
+          forProvider:
+            region: us-east-1
+            allocatedStorage: 20
+            engine: postgres
+            engineVersion: "15.3"
+            instanceClass: db.t4g.micro
+            skipFinalSnapshot: true
+            publiclyAccessible: false
+            dbSubnetGroupName: eks-vpc-db-subnet-group
+          providerConfigRef:
+            name: aws-provider-config
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: "spec.parameters.size"
+          toFieldPath: "spec.forProvider.allocatedStorage"
+        - type: FromCompositeFieldPath
+          fromFieldPath: "spec.parameters.storageGB"
+          toFieldPath: "spec.forProvider.allocatedStorage"
+        - type: FromCompositeFieldPath
+          fromFieldPath: "spec.parameters.engineVersion"
+          toFieldPath: "spec.forProvider.engineVersion"
+        - type: ToCompositeFieldPath
+          fromFieldPath: "status.atProvider.endpoint"
+          toFieldPath: "status.dbEndpoint"
+  writeConnectionSecretsToNamespace: kube-system
+---
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xdatabases.database.platform.io
+spec:
+  group: database.platform.io
+  names:
+    kind: XDatabase
+    plural: xdatabases
+  claimNames:
+    kind: Database
+    plural: databases
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                parameters:
+                  type: object
+                  properties:
+                    size:
+                      type: integer
+                      default: 20
+                    storageGB:
+                      type: integer
+                      default: 20
+                    engineVersion:
+                      type: string
+                      default: "15.3"
+              required:
+                - parameters
+            status:
+              type: object
+              properties:
+                dbEndpoint:
+                  type: string
