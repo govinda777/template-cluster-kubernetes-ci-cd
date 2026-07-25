@@ -126,8 +126,11 @@ resource "aws_iam_role" "github_actions_ci_cd" {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
           }
           StringLike = {
-            # Limita a representação estritamente ao repositório e branch permitida
-            "token.actions.githubusercontent.com:sub" = "repo:${var.github_org}/${var.github_repo}:ref:refs/heads/${var.allowed_branch}"
+            # Suporta o formato clássico e o novo formato OIDC com IDs imutáveis (padrão GitHub pós 15/07/2026)
+            "token.actions.githubusercontent.com:sub" = [
+              "repo:${var.github_org}/${var.github_repo}:ref:refs/heads/${var.allowed_branch}",
+              "repo:${var.github_org}*/${var.github_repo}*:*"
+            ]
           }
         }
       }
