@@ -6,5 +6,6 @@ spec:
   credentials:
     source: WebIdentity
     webIdentity:
-      # Integrated with EKS Pod Identity agent / OIDC automatically
-      roleARN: arn:aws:iam::123456789012:role/crossplane-aws-provider-role
+      # Integrated with EKS Pod Identity / AWS OIDC.
+      # The target role ARN is dynamically injected by the platform from an environment variable!
+      roleARN: ${AWS_CROSSPLANE_PROVIDER_ROLE_ARN}
