@@ -86,7 +86,7 @@ jobs:
       AWS_REGION: ${{ secrets.AWS_REGION }}
       ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME_DEV }}
     steps:
-      # OTIMIZAÇÃO 1: Validação Prévia Imediata com links precisos da documentação interna e externa
+      # OTIMIZAÇÃO 1: Validação Prévia Imediata com links precisos da documentação interna de nossa plataforma
       - name: Pre-flight Check - Validate Required Secrets
         run: |
           MISSING_VARS=0
@@ -101,9 +101,21 @@ jobs:
             MISSING_VARS=1
           fi
 
+          # Se o GCP/GKE for habilitado nas configurações locais, também validamos as credenciais do GCP
+          # Verificamos se há tentativa de habilitar o GKE por padrão no variáveis.tf ou se as variáveis do GCP estão sendo usadas
+          GCP_ENABLED=$(grep -A 5 "enable_gke" terraform/live/dev/variables.tf | grep "default" | grep "true" || echo "")
+          if [ -n "$GCP_ENABLED" ]; then
+            if [ -z "${{ secrets.GCP_PROJECT_ID }}" ] || [ -z "${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}" ] || [ -z "${{ secrets.GCP_SERVICE_ACCOUNT_DEV }}" ]; then
+              echo "::error title=Secrets GCP Ausentes::O GKE está habilitado, mas as credenciais/WIF do GCP não estão configuradas nos Secrets."
+              MISSING_VARS=1
+              echo "::warning title=Documentação de Autenticação GCP::Consulte o nosso guia customizado de autenticação GCP & WIF: https://github.com/${{ github.repository }}/blob/main/docs/DOCS_AUTENTICACAO_GCP_WIF.md"
+            fi
+          fi
+
           if [ $MISSING_VARS -eq 1 ]; then
-            echo "::warning title=Documentação do Projeto::Veja como configurar as variáveis de ambiente e secrets no README.md do projeto: https://github.com/${{ github.repository }}/blob/main/README.md#1-configurando-o-oidc-da-aws-no-github"
-            echo "::warning title=Documentação de IAM Role (AWS)::Veja como criar a relação de confiança OIDC na AWS: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc.html"
+            echo "::warning title=Documentação do Projeto::Veja como configurar as variáveis de ambiente e secrets no README.md do projeto: https://github.com/${{ github.repository }}/blob/main/README.md"
+            echo "::warning title=Documentação de IAM Role (AWS)::Consulte a nossa documentação customizada de integração Git & AWS: https://github.com/${{ github.repository }}/blob/main/docs/DOCS_AUTENTICACAO_AWS_GIT.md"
+            echo "::warning title=Configuração OIDC GitHub (AWS)::Consulte as nossas instruções locais de OIDC: https://github.com/${{ github.repository }}/blob/main/docs/CONFIGURAR_OIDC_GITHUB.md"
             echo "::error::Validação de ambiente de desenvolvimento falhou. Interrompendo a pipeline antes da execução dos passos pesados."
             exit 1
           fi
@@ -148,7 +160,7 @@ jobs:
       AWS_REGION: ${{ secrets.AWS_REGION_PROD }}
       ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME_PROD }}
     steps:
-      # OTIMIZAÇÃO 2: Validação Prévia Imediata para Prod
+      # OTIMIZAÇÃO 2: Validação Prévia Imediata para Prod com links precisos da documentação interna de nossa plataforma
       - name: Pre-flight Check - Validate Required Secrets
         run: |
           MISSING_VARS=0
@@ -163,9 +175,20 @@ jobs:
             MISSING_VARS=1
           fi
 
+          # Se o GCP/GKE for habilitado nas configurações locais, também validamos as credenciais do GCP para Prod
+          GCP_ENABLED=$(grep -A 5 "enable_gke" terraform/live/prod/variables.tf | grep "default" | grep "true" || echo "")
+          if [ -n "$GCP_ENABLED" ]; then
+            if [ -z "${{ secrets.GCP_PROJECT_ID }}" ] || [ -z "${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}" ] || [ -z "${{ secrets.GCP_SERVICE_ACCOUNT_PROD }}" ]; then
+              echo "::error title=Secrets GCP Ausentes::O GKE está habilitado para Produção, mas as credenciais/WIF do GCP não estão configuradas."
+              MISSING_VARS=1
+              echo "::warning title=Documentação de Autenticação GCP::Consulte o nosso guia customizado de autenticação GCP & WIF: https://github.com/${{ github.repository }}/blob/main/docs/DOCS_AUTENTICACAO_GCP_WIF.md"
+            fi
+          fi
+
           if [ $MISSING_VARS -eq 1 ]; then
-            echo "::warning title=Documentação do Projeto::Veja como configurar as variáveis de ambiente e secrets no README.md do projeto: https://github.com/${{ github.repository }}/blob/main/README.md#1-configurando-o-oidc-da-aws-no-github"
-            echo "::warning title=Documentação de IAM Role (AWS)::Veja como criar a relação de confiança OIDC na AWS: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc.html"
+            echo "::warning title=Documentação do Projeto::Veja como configurar as variáveis de ambiente e secrets no README.md do projeto: https://github.com/${{ github.repository }}/blob/main/README.md"
+            echo "::warning title=Documentação de IAM Role (AWS)::Consulte a nossa documentação customizada de integração Git & AWS: https://github.com/${{ github.repository }}/blob/main/docs/DOCS_AUTENTICACAO_AWS_GIT.md"
+            echo "::warning title=Configuração OIDC GitHub (AWS)::Consulte as nossas instruções locais de OIDC: https://github.com/${{ github.repository }}/blob/main/docs/CONFIGURAR_OIDC_GITHUB.md"
             echo "::error::Validação de ambiente de produção falhou. Interrompendo a pipeline antes da execução dos passos pesados."
             exit 1
           fi
@@ -210,7 +233,7 @@ jobs:
       AWS_REGION: ${{ secrets.AWS_REGION }}
       ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME_TEST }}
     steps:
-      # OTIMIZAÇÃO 3: Validação Prévia Imediata para Testes
+      # OTIMIZAÇÃO 3: Validação Prévia Imediata para Testes com links precisos da documentação interna de nossa plataforma
       - name: Pre-flight Check - Validate Required Secrets
         run: |
           MISSING_VARS=0
@@ -226,8 +249,9 @@ jobs:
           fi
 
           if [ $MISSING_VARS -eq 1 ]; then
-            echo "::warning title=Documentação do Projeto::Veja como configurar as variáveis de ambiente e secrets no README.md do projeto: https://github.com/${{ github.repository }}/blob/main/README.md#1-configurando-o-oidc-da-aws-no-github"
-            echo "::warning title=Documentação de IAM Role (AWS)::Veja como criar a relação de confiança OIDC na AWS: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc.html"
+            echo "::warning title=Documentação do Projeto::Veja como configurar as variáveis de ambiente e secrets no README.md do projeto: https://github.com/${{ github.repository }}/blob/main/README.md"
+            echo "::warning title=Documentação de IAM Role (AWS)::Consulte a nossa documentação customizada de integração Git & AWS: https://github.com/${{ github.repository }}/blob/main/docs/DOCS_AUTENTICACAO_AWS_GIT.md"
+            echo "::warning title=Configuração OIDC GitHub (AWS)::Consulte as nossas instruções locais de OIDC: https://github.com/${{ github.repository }}/blob/main/docs/CONFIGURAR_OIDC_GITHUB.md"
             echo "::error::Validação de ambiente de testes falhou. Interrompendo a pipeline antes da execução dos passos pesados."
             exit 1
           fi
