@@ -35,9 +35,7 @@ Esta arquitetura foi desenhada para resolver os problemas comuns de gerenciament
 template-cluster-kubernetes-ci-cd/
 ├── .github/
 │   └── workflows/
-│       ├── 01-lint-and-security.yml       # Validação estática, trivy, tfsec e OPA Conftest
-│       ├── 02-infrastructure-ci-cd.yml    # Pipeline de infraestrutura com OpenTofu (dev & prod)
-│       └── 03-integration-tests.yml       # Pipeline para execução dos testes Terratest em Go
+│       ├── ci-cd.yml                      # Pipeline de CI/CD sequencial com fail-fast e controle de concorrência
 ├── terraform/
 │   ├── modules/                           # Módulos Terraform reusáveis
 │   │   ├── vpc/                           # Provisionamento de Rede (Public/Private subnets, NAT, IGW)
@@ -94,40 +92,70 @@ template-cluster-kubernetes-ci-cd/
 ## 🚀 Passo-a-Passo: Configuração do Zero e Primeiro Deploy
 
 ### 1. Configurando o OIDC da AWS no GitHub
-Para que o GitHub Actions gerencie sua infraestrutura AWS de forma segura sem credenciais estáticas, siga os passos abaixo:
 
-1. **Crie o Provedor de Identidade OIDC no IAM da AWS:**
-   - Acesse o Console AWS -> IAM -> Identity Providers -> Add Provider.
-   - Escolha **OpenID Connect**.
-   - URL do Provedor: `https://token.actions.githubusercontent.com`
-   - Audience: `sts.amazonaws.com`
+Para que o GitHub Actions se comunique com a AWS com segurança de forma sem senha e assuma apenas as permissões estritamente necessárias para provisionar a plataforma, siga as regras de **Princípio de Acesso Mínimo** (Least Privilege) detalhadas abaixo:
 
-2. **Crie a Role do IAM para o GitHub Actions:**
-   - Crie uma nova Role com política de confiança personalizada (Trust Policy):
-   ```json
-   {
-     "Version": "2012-10-17",
-     "Statement": [
-       {
-         "Effect": "Allow",
-         "Principal": {
-           "Federated": "arn:aws:iam::YOUR_ACCOUNT_ID:oidc-provider/token.actions.githubusercontent.com"
-         },
-         "Action": "sts:AssumeRoleWithWebIdentity",
-         "Condition": {
-           "StringEquals": {
-             "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
-           },
-           "StringLike": {
-             "token.actions.githubusercontent.com:sub": "repo:YOUR_ORG_OR_USER/template-cluster-kubernetes-ci-cd:*"
-           }
-         }
-       }
-     ]
-   }
-   ```
-   - Associe as permissões administrativas adequadas (ex: `AdministratorAccess` ou políticas granulares para VPC, EKS, EC2, IAM, S3, DynamoDB).
-   - Configure os valores `ROLE_TO_ASSUME` nos arquivos `.github/workflows/02-infrastructure-ci-cd.yml` e `03-integration-tests.yml` com as ARNs das roles criadas.
+#### Passo A: Criar o Provedor OIDC (Uma única vez por Conta AWS)
+1. Acesse o Console AWS -> **IAM** -> **Identity Providers** -> **Add Provider**.
+2. Escolha **OpenID Connect**.
+3. **Provider URL:** `https://token.actions.githubusercontent.com`
+4. Clique em **Get thumbprint**.
+5. **Audience:** `sts.amazonaws.com`
+6. Clique em **Add provider**.
+
+#### Passo B: Criar as Policies do IAM com Acesso Mínimo
+Não dê `AdministratorAccess` para a Role do GitHub Actions. Em vez disso, crie políticas personalizadas contendo apenas as permissões necessárias para gerenciar os recursos declarados neste template:
+
+1.  **Políticas de Rede (VPC)**: Permissões para criar, modificar e deletar subnets, rotas, NAT Gateways, Internet Gateways e Security Groups.
+2.  **Políticas do EKS**: Permissões para gerenciar clusters EKS, Node Groups e associações do Pod Identity Agent (`eks:CreateCluster`, `eks:CreateNodegroup`, `eks:AssociatePodIdentityRole`).
+3.  **Políticas do IAM**: Permissões para gerenciar roles dedicadas dos pods e do cluster (`iam:CreateRole`, `iam:PutRolePolicy`, `iam:PassRole`).
+4.  **Políticas de S3 e DynamoDB**: Permissões de escrita e leitura sobre o bucket S3 e tabela DynamoDB correspondentes ao backend de estado do OpenTofu (`s3:ListBucket`, `s3:GetObject`, `s3:PutObject`, `dynamodb:GetItem`, `dynamodb:PutItem`, `dynamodb:DeleteItem`).
+
+#### Passo C: Criar as Roles do IAM e suas Trust Policies (Relações de Confiança)
+Crie três Roles IAM no seu console (uma para cada ambiente e testes):
+- `github-actions-eks-dev-role`
+- `github-actions-eks-prod-role`
+- `github-actions-eks-test-role`
+
+Anexe as políticas de acesso mínimo criadas no Passo B a cada uma delas.
+
+A **Trust Policy** (Relação de Confiança) deve ser estrita, permitindo que **apenas o seu repositório oficial** e branches autorizadas assumam a Role. Use a seguinte Trust Policy (substituindo `<SUA_CONTA_ID>` pelo ID real da sua conta AWS e `<SEU_USUARIO_OU_ORG>` pelo seu usuário/organização no GitHub):
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::<SUA_CONTA_ID>:oidc-provider/token.actions.githubusercontent.com"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+        },
+        "StringLike": {
+          "token.actions.githubusercontent.com:sub": "repo:<SEU_USUARIO_OU_ORG>/template-cluster-kubernetes-ci-cd:*"
+        }
+      }
+    }
+  ]
+}
+```
+
+#### Passo D: Cadastrar os Secrets no seu Repositório GitHub
+Para que as pipelines de CI/CD encontrem essas credenciais e rodem com sucesso, acesse a página de configurações do seu repositório no GitHub (**Settings > Secrets and variables > Actions > New repository secret**) e crie as seguintes variáveis secretas:
+
+- **`AWS_REGION`**: ex: `us-east-1` (Região padrão utilizada pelo desenvolvimento e testes)
+- **`AWS_REGION_PROD`**: ex: `us-west-2` (Região padrão utilizada pelo ambiente de produção)
+- **`AWS_ROLE_TO_ASSUME_DEV`**: ARN completa da Role IAM criada para Desenvolvimento (ex: `arn:aws:iam::<SUA_CONTA_ID>:role/github-actions-eks-dev-role`)
+- **`AWS_ROLE_TO_ASSUME_PROD`**: ARN completa da Role IAM criada para Produção (ex: `arn:aws:iam::<SUA_CONTA_ID>:role/github-actions-eks-prod-role`)
+- **`AWS_ROLE_TO_ASSUME_TEST`**: ARN completa da Role IAM criada para a suíte de Testes (ex: `arn:aws:iam::<SUA_CONTA_ID>:role/github-actions-eks-test-role`)
+
+Se qualquer uma dessas variáveis estiver vazia ou ausente, a pipeline de CI/CD ativará o mecanismo **Fail-Fast** e abortará a execução imediatamente nos primeiros 2 segundos para garantir total segurança e transparência!
+
+---
 
 ### 2. Inicializando e Executando o OpenTofu Localmente
 Se preferir rodar as ferramentas localmente usando o binário `tofu` (ou `terraform`):
@@ -393,7 +421,7 @@ A integridade do estado e configuração do Kubernetes é garantida em duas fren
   ```
 
 #### Para Banco de Dados (PostgreSQL / RDS)
-- **RDS (via Crossplane)**: Habilita backups automáticos (Point-in-Time Recovery - PITR) com retenção de 7 a 30 dias. Snapshots diários redundantes são criados na AWS.
+- **RDS (via Crossplane)**: Habilita backups automáticos (Point-in-Time Recovery - PITR) com retornabilidade de 7 a 30 dias. Snapshots diários redundantes são criados na AWS.
 - **PostgreSQL In-Cluster (Dev/Local)**: Um CronJob executa o `pg_dump` de hora em hora e envia o dump comprimido e criptografado para o S3:
   ```bash
   # Para restaurar o banco in-cluster a partir do S3
@@ -528,5 +556,5 @@ go test -v -timeout 60m -run TestE2ECluster
 
 ## 🔒 Segurança e Governança
 
-- **Verificação Estática (Trivy & TFSec)**: Executados a cada PR no arquivo `.github/workflows/01-lint-and-security.yml` para auditar configurações incorretas e vulnerabilidades de segurança nos pacotes e arquivos HCL.
+- **Verificação Estática (Trivy & TFSec)**: Executados a cada PR no arquivo `.github/workflows/ci-cd.yml` para auditar configurações incorretas e vulnerabilidades de segurança nos pacotes e arquivos HCL.
 - **Isolamento de Credenciais**: Nenhuma chave ou segredo da AWS é exposto no código ou armazenado nos ambientes do GitHub Actions graças à autenticação federada (OIDC) e STS Pod Identity.
