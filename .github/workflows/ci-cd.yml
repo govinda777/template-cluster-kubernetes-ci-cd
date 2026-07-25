@@ -80,7 +80,7 @@ jobs:
       AWS_REGION: ${{ secrets.AWS_REGION }}
       ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME_DEV }}
     steps:
-      # OTIMIZAÇÃO 1: Validação Prévia Imediata (Falha em < 2 segundos se os secrets essenciais estiverem vazios)
+      # OTIMIZAÇÃO 1: Validação Prévia Imediata com link explicativo da documentação oficial
       - name: Pre-flight Check - Validate Required Secrets
         run: |
           MISSING_VARS=0
@@ -96,7 +96,8 @@ jobs:
           fi
 
           if [ $MISSING_VARS -eq 1 ]; then
-            echo "::error::Validação de ambiente de desenvolvimento falhou. Interrompendo a pipeline imediatamente para evitar vazamento ou falhas silenciosas."
+            echo "::warning title=Instruções de Configuração::Consulte as instruções de criação de secrets e configuração OIDC no README.md do projeto ou na documentação da AWS: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc.html"
+            echo "::error::Validação de ambiente de desenvolvimento falhou. Interrompendo a pipeline antes da execução dos passos pesados."
             exit 1
           fi
 
@@ -156,7 +157,8 @@ jobs:
           fi
 
           if [ $MISSING_VARS -eq 1 ]; then
-            echo "::error::Validação de ambiente de produção falhou. Interrompendo a pipeline imediatamente para evitar vazamento ou falhas silenciosas."
+            echo "::warning title=Instruções de Configuração::Consulte as instruções de criação de secrets e configuração OIDC no README.md do projeto ou na documentação da AWS: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc.html"
+            echo "::error::Validação de ambiente de produção falhou. Interrompendo a pipeline antes da execução dos passos pesados."
             exit 1
           fi
 
@@ -216,7 +218,8 @@ jobs:
           fi
 
           if [ $MISSING_VARS -eq 1 ]; then
-            echo "::error::Validação de ambiente de testes falhou. Interrompendo a pipeline imediatamente para evitar vazamento ou falhas silenciosas."
+            echo "::warning title=Instruções de Configuração::Consulte as instruções de criação de secrets e configuração OIDC no README.md do projeto ou na documentação da AWS: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc.html"
+            echo "::error::Validação de ambiente de testes falhou. Interrompendo a pipeline antes da execução dos passos pesados."
             exit 1
           fi
 
