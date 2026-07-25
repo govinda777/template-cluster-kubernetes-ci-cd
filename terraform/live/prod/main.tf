@@ -8,7 +8,7 @@ module "vpc" {
   private_subnet_cidrs = ["10.1.10.0/24", "10.1.11.0/24", "10.1.12.0/24"]
 }
 
-# AWS Cluster deployment
+# AWS Cluster deployment (enabled by default)
 module "eks" {
   source = "../../modules/eks"
 
@@ -33,23 +33,25 @@ module "pod_identity_api_exemplo" {
 }
 
 # ===============================================================================
-# MULTI-CLOUD EXTENSIONS (DEMO PURPOSES)
+# GCP GKE DEPLOYMENT (Enabled by default as per project requirements)
 # ===============================================================================
-#
-# Para provisionar clusters correspondentes em GCP ou Azure no mesmo ambiente,
-# descomente as seções abaixo e configure os respectivos providers no arquivo providers.tf.
-
-/*
 module "gke" {
   source       = "../../modules/gke"
-  project_id   = "my-gcp-project-prod"
-  region       = "us-west1"
+  project_id   = var.gcp_project_id
+  region       = var.gcp_region
   environment  = var.environment
   cluster_name = "template-gke-cluster-prod"
   vpc_cidr     = "10.2.0.0/16"
   subnet_cidr  = "10.2.1.0/24"
 }
 
+# ===============================================================================
+# AZURE AKS EXTENSION (DEMO PURPOSES / OPTIONAL)
+# ===============================================================================
+#
+# Para provisionar o cluster correspondente em Azure, descomente a seção abaixo
+# e configure o provider azurerm no arquivo providers.tf.
+/*
 module "aks" {
   source              = "../../modules/aks"
   resource_group_name = "template-aks-rg-prod"
