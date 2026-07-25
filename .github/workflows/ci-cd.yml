@@ -80,6 +80,7 @@ jobs:
   tofu-dev:
     name: "02 - OpenTofu Dev Environment"
     needs: lint-and-security
+    if: github.repository == 'govinda777/template-cluster-kubernetes-ci-cd' && github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     env:
       AWS_REGION: ${{ secrets.AWS_REGION }}
@@ -142,6 +143,7 @@ jobs:
   tofu-prod:
     name: "03 - OpenTofu Prod Environment"
     needs: tofu-dev
+    if: github.repository == 'govinda777/template-cluster-kubernetes-ci-cd' && github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     env:
       AWS_REGION: ${{ secrets.AWS_REGION_PROD }}
@@ -204,6 +206,7 @@ jobs:
   integration-test:
     name: "04 - Terratest Integration Suite"
     needs: tofu-prod
+    if: github.repository == 'govinda777/template-cluster-kubernetes-ci-cd' && github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     env:
       AWS_REGION: ${{ secrets.AWS_REGION }}
