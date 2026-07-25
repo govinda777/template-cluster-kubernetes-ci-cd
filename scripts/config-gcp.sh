@@ -485,8 +485,8 @@ if [[ "$RUN_BOOTSTRAP" =~ ^[Yy]$ ]]; then
 
     $TOFU_BIN init -upgrade
 
-    echo -e "\n${BLUE}[INFO] Aplicando recursos no GCP via OpenTofu/Terraform...${NC}"
-    # Carregar credenciais AWS locais se existirem para evitar falha em recursos AWS no bootstrap
+    echo -e "\n${BLUE}[INFO] Aplicando recursos globais de Bootstrap (AWS OIDC & GCP WIF) via OpenTofu/Terraform...${NC}"
+    # Carrega credenciais AWS locais se existirem para evitar falhas de validação nos recursos AWS do bootstrap
     if [ -f "../../.aws_profile_env" ]; then
         source "../../.aws_profile_env"
         export AWS_PROFILE
