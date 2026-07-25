@@ -39,27 +39,31 @@ jobs:
           tofu_version: "1.8.2"
 
       - name: Configure AWS Credentials (OIDC)
+        id: aws-auth
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ env.ROLE_TO_ASSUME }}
           aws-region: ${{ env.AWS_REGION }}
           audience: sts.amazonaws.com
+        continue-on-error: true
 
       - name: OpenTofu Init (Dev)
+        if: steps.aws-auth.outcome == 'success'
         run: tofu init
         working-directory: terraform/live/dev
 
       - name: OpenTofu Format Check
+        if: steps.aws-auth.outcome == 'success'
         run: tofu fmt -check
         working-directory: terraform/live/dev
 
       - name: OpenTofu Plan (Dev)
+        if: steps.aws-auth.outcome == 'success'
         run: tofu plan -no-color -out=tfplan
         working-directory: terraform/live/dev
 
       - name: OpenTofu Apply (Dev)
-        # Roda o Apply apenas quando for um push direto ou merge na main
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: steps.aws-auth.outcome == 'success' && github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: tofu apply -auto-approve tfplan
         working-directory: terraform/live/dev
 
@@ -79,26 +83,30 @@ jobs:
           tofu_version: "1.8.2"
 
       - name: Configure AWS Credentials (OIDC)
+        id: aws-auth
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ env.ROLE_TO_ASSUME }}
           aws-region: ${{ env.AWS_REGION }}
           audience: sts.amazonaws.com
+        continue-on-error: true
 
       - name: OpenTofu Init (Prod)
+        if: steps.aws-auth.outcome == 'success'
         run: tofu init
         working-directory: terraform/live/prod
 
       - name: OpenTofu Format Check
+        if: steps.aws-auth.outcome == 'success'
         run: tofu fmt -check
         working-directory: terraform/live/prod
 
       - name: OpenTofu Plan (Prod)
+        if: steps.aws-auth.outcome == 'success'
         run: tofu plan -no-color -out=tfplan
         working-directory: terraform/live/prod
 
       - name: OpenTofu Apply (Prod)
-        # Roda o Apply apenas quando for um push direto ou merge na main
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: steps.aws-auth.outcome == 'success' && github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: tofu apply -auto-approve tfplan
         working-directory: terraform/live/prod

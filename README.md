@@ -42,10 +42,12 @@ template-cluster-kubernetes-ci-cd/
 │   ├── modules/                           # Módulos Terraform reusáveis
 │   │   ├── vpc/                           # Provisionamento de Rede (Public/Private subnets, NAT, IGW)
 │   │   ├── eks/                           # Cluster EKS, Node Groups e Addons (Pod Identity Agent)
+│   │   ├── gke/                           # Cluster GKE no GCP com suporte a Workload Identity
+│   │   ├── aks/                           # Cluster AKS na Azure com suporte a AD Workload Identity
 │   │   └── pod-identity/                  # Mapeamentos e papéis do EKS Pod Identity
 │   └── live/                              # Instanciação por ambientes separados
-│       ├── dev/                           # Ambiente de Desenvolvimento (us-east-1)
-│       └── prod/                          # Ambiente de Produção (us-west-2)
+│       ├── dev/                           # Ambiente de Desenvolvimento (us-east-1 / GCP us-central1)
+│       └── prod/                          # Ambiente de Produção (us-west-2 / GCP us-west1)
 ├── crossplane/
 │   ├── provider-configs/                  # Configurações de provedores do Crossplane (AWS WebIdentity)
 │   └── compositions/                      # Compositions de banco de dados gerenciados (AWS RDS Postgres)
@@ -143,7 +145,7 @@ tofu fmt -check
 # Execute o plano de infraestrutura
 tofu plan -out=tfplan
 
-# Aplique o plano para criar a VPC, Cluster EKS e o Pod Identity Agent
+# Aplique o plano para criar a VPC, Cluster EKS, GKE, e o Pod Identity Agent
 tofu apply tfplan
 ```
 
@@ -444,7 +446,7 @@ graph TD
     end
 
     subgraph Camada de Dados Global
-        AppAWS -->|Leitura / Escrita local| CockroachDB[Banco de Dados Distribuído Ativo-Ativo <br> CockroachDB / Aurora Global Database]
+        AppAWS -->|Leitura / Escrita local| CockroachDB[Banco de Dados Distribuído Ativo-Ativo <br> CockroachDB / Spanner]
         AppGCP -->|Leitura / Escrita local| CockroachDB
     end
 ```
@@ -469,7 +471,7 @@ graph TD
 
     subgraph GCP Region
         GCPLB --> GKE[Cluster GCP GKE]
-        GKE --> RDS_Replica[(RDS Read Replica no GCP/AWS Secundário)]
+        GKE --> RDS_Replica[(GCP Cloud SQL PostgreSQL - Replica)]
     end
 
     RDS_Master -->|Replicação Assíncrona Contínua| RDS_Replica

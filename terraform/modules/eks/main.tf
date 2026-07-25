@@ -134,10 +134,10 @@ resource "aws_eks_node_group" "main" {
   ]
 
   tags = {
-    Environment                                                     = var.environment
-    "k8s.io/cluster-autoscaler/enabled"                             = "true"
-    "k8s.io/cluster-autoscaler/${var.cluster_name}"                 = "owned"
-    "karpenter.sh/discovery"                                        = var.cluster_name
+    Environment                                     = var.environment
+    "k8s.io/cluster-autoscaler/enabled"             = "true"
+    "k8s.io/cluster-autoscaler/${var.cluster_name}" = "owned"
+    "karpenter.sh/discovery"                        = var.cluster_name
   }
 }
 
