@@ -33,9 +33,10 @@ module "pod_identity_api_example" {
 }
 
 # ===============================================================================
-# GCP GKE DEPLOYMENT (Enabled by default as per project requirements)
+# GCP GKE DEPLOYMENT (Conditionally enabled to allow pipeline execution without GCP credentials)
 # ===============================================================================
 module "gke" {
+  count        = var.enable_gke ? 1 : 0
   source       = "../../modules/gke"
   project_id   = var.gcp_project_id
   region       = var.gcp_region

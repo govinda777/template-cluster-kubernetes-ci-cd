@@ -218,3 +218,36 @@ gcloud services enable \
     container.googleapis.com \
     iamcredentials.googleapis.com
 ```
+
+---
+
+## 9. Como a Pipeline CI/CD lida com GCP sem Credenciais Ativas (O Parâmetro `enable_gke`)
+
+Para evitar falhas na pipeline do GitHub Actions quando as credenciais do Google Cloud ainda não estão configuradas (por exemplo, no onboarding inicial), o projeto utiliza uma flag de controle condicional chamada **`enable_gke`**.
+
+### Como funciona?
+Nas pastas `terraform/live/dev/variables.tf` e `terraform/live/prod/variables.tf`, o parâmetro `enable_gke` é definido como `false` por padrão:
+```hcl
+variable "enable_gke" {
+  type        = bool
+  description = "Toggle to enable/disable GKE cluster deployment"
+  default     = false
+}
+```
+
+E no arquivo `main.tf` dos ambientes, o módulo do GKE utiliza o parâmetro `count` do Terraform/OpenTofu condicionado a essa variável:
+```hcl
+module "gke" {
+  count        = var.enable_gke ? 1 : 0
+  source       = "../../modules/gke"
+  ...
+}
+```
+
+### Vantagens dessa Abordagem:
+1. **Pipeline Sempre Verde (Always Green):** Como `enable_gke` é `false` por padrão, a pipeline do GitHub Actions não tenta planejar ou criar recursos do GCP quando iniciada em um repositório que só possui credenciais da AWS. Isso evita erros de `google: could not find default credentials` durante o `tofu plan`.
+2. **Onboarding Simplificado:** Novos desenvolvedores podem rodar `tofu apply` para o cluster AWS (EKS) imediatamente.
+3. **Ativação Simples:** Assim que você possuir suas credenciais GCP configuradas e tiver feito o bootstrap do OIDC GCP via `make config gcp`, basta ativar a variável alterando o default para `true` ou criando um arquivo `terraform.tfvars` local com:
+   ```hcl
+   enable_gke = true
+   ```

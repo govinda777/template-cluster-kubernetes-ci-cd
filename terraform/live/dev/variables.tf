@@ -42,3 +42,9 @@ variable "gcp_zone" {
   description = "GCP zone for GKE deployment"
   default     = "us-central1-a"
 }
+
+variable "enable_gke" {
+  type        = bool
+  description = "Toggle to enable/disable GKE cluster deployment"
+  default     = false
+}
