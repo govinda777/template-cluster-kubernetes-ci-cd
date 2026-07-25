@@ -480,6 +480,19 @@ if [[ "$RUN_BOOTSTRAP" =~ ^[Yy]$ ]]; then
         TOFU_BIN="terraform"
     fi
 
+    # Garantir que as Application Default Credentials (ADC) do GCP estão válidas para o OpenTofu/Terraform
+    echo -e "\n${BLUE}[INFO] Verificando validade das Application Default Credentials (ADC) do GCP...${NC}"
+    if ! gcloud auth application-default print-access-token &>/dev/null; then
+        echo -e "${YELLOW}[WARN] Application Default Credentials (ADC) não encontradas ou expiradas para o GCP.${NC}"
+        echo -e "${BLUE}[INFO] Solicitando autenticação ADC (gcloud auth application-default login) para evitar falhas no OpenTofu...${NC}"
+        if ! gcloud auth application-default login; then
+            echo -e "${YELLOW}[WARN] Falha na autenticação via browser. Tentando com fluxo manual...${NC}"
+            gcloud auth application-default login --no-launch-browser
+        fi
+    else
+        echo -e "${GREEN}[OK] Application Default Credentials (ADC) estão ativas e válidas!${NC}"
+    fi
+
     echo -e "\n${BLUE}[INFO] Inicializando o OpenTofu/Terraform para o Bootstrap do OIDC...${NC}"
     cd terraform/bootstrap
 
