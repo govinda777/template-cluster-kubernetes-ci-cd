@@ -18,7 +18,7 @@ terraform {
   backend "s3" {
     bucket         = "template-cluster-k8s-terraform-state-dev"
     key            = "dev/eks-cluster/terraform.tfstate"
-    region         = "us-east-1"
+    region         = "us-east-1"  # Update this to match your actual bucket region
     dynamodb_table = "template-cluster-k8s-tflocks-dev"
     encrypt        = true
   }
