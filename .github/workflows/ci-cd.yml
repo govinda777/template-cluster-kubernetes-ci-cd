@@ -48,24 +48,29 @@ jobs:
         continue-on-error: true
 
       - name: Run tfsec on Terraform Modules
-        uses: aquasecurity/tfsec-action@v1.0.0
-        with:
-          working_directory: terraform/
-          soft_fail: true
+        # Usamos o tfsec pré-compilado ou via CLI instalável, pois aquasecurity/tfsec-action@v1.0.0
+        # tenta compilar uma imagem docker local (alpine:3.12) que falha em runners com rede restrita / timeouts de Docker Hub.
+        # Baixar o binário diretamente do GitHub Releases é 10 vezes mais rápido, leve, seguro e imune a i/o timeouts do Docker!
+        run: |
+          wget -q https://github.com/aquasecurity/tfsec/releases/download/v1.28.11/tfsec-linux-amd64
+          chmod +x tfsec-linux-amd64
+          sudo mv tfsec-linux-amd64 /usr/local/bin/tfsec
+          tfsec terraform/ --soft-fail
 
       - name: Run Trivy vulnerability scanner on Repo
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: 'config'
-          hide-by-severity: 'LOW,MEDIUM'
-          exit-code: '0'
-          ignore-unfixed: true
+        # Usamos o Trivy CLI instalável de forma nativa e ultra veloz sem depender de builds de imagem docker do Docker Hub.
+        run: |
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | sudo tee /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update -y -q && sudo apt-get install trivy -y -q
+          trivy config --severity HIGH,CRITICAL --exit-code 0 .
 
       - name: Install Conftest
         run: |
-          wget https://github.com/open-policy-agent/conftest/releases/download/v0.54.0/conftest_0.54.0_Linux_x86_64.tar.gz
+          wget -q https://github.com/open-policy-agent/conftest/releases/download/v0.54.0/conftest_0.54.0_Linux_x86_64.tar.gz
           tar xzf conftest_0.54.0_Linux_x86_64.tar.gz
           sudo mv conftest /usr/local/bin/
+          rm -f conftest_0.54.0_Linux_x86_64.tar.gz
 
       - name: Verify Kubernetes Manifests against OPA Policies
         run: |
@@ -142,7 +147,7 @@ jobs:
       AWS_REGION: ${{ secrets.AWS_REGION_PROD }}
       ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME_PROD }}
     steps:
-      # OTIMIZAÇÃO 2: Validação Prévia Imediata para Prod com links precisos da documentação interna e externa
+      # OTIMIZAÇÃO 2: Validação Prévia Imediata para Prod
       - name: Pre-flight Check - Validate Required Secrets
         run: |
           MISSING_VARS=0
@@ -204,7 +209,7 @@ jobs:
       AWS_REGION: ${{ secrets.AWS_REGION }}
       ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME_TEST }}
     steps:
-      # OTIMIZAÇÃO 3: Validação Prévia Imediata para Testes com links precisos da documentação interna e externa
+      # OTIMIZAÇÃO 3: Validação Prévia Imediata para Testes
       - name: Pre-flight Check - Validate Required Secrets
         run: |
           MISSING_VARS=0
