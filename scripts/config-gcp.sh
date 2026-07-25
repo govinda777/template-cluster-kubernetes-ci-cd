@@ -264,8 +264,76 @@ fi
 
 if [ "$CHOSEN_ACTION" = "ADC" ] || [ "$CHOSEN_ACTION" = "FULL" ]; then
     echo -e "\n${BLUE}[INFO] Iniciando autenticação Application Default Credentials (ADC)...${NC}"
-    gcloud auth application-default login
+    if ! gcloud auth application-default login; then
+        echo -e "${YELLOW}[WARN] Falha na autenticação via browser. Tentando com fluxo manual...${NC}"
+        gcloud auth application-default login --no-launch-browser
+    fi
 fi
+
+# Variável para rastrear erros detalhados do GCP
+LAST_GCP_ERROR=""
+
+# Helper para validação de permissões e pré-requisitos antes de criar projeto
+validate_gcp_project_creation() {
+    local project_id="$1"
+    local project_name="$2"
+    local err_file
+    err_file=$(mktemp)
+
+    echo -e "${BLUE}[INFO] Validando pré-requisitos para criação do projeto...${NC}"
+
+    # 1. Validar formato do Project ID
+    if [[ ! "$project_id" =~ ^[a-z][a-z0-9-]{4,29}[a-z0-9]$ ]]; then
+        LAST_GCP_ERROR="Project ID inválido. Deve ter 6-30 caracteres, começar com letra minúscula, conter apenas letras minúsculas, números e hífens, e terminar com letra ou número."
+        rm -f "$err_file"
+        return 1
+    fi
+
+    # 2. Verificar se o Project ID já existe
+    echo -e "${BLUE}[INFO] Verificando se o Project ID '$project_id' já existe...${NC}"
+    if gcloud projects describe "$project_id" >/dev/null 2>"$err_file"; then
+        LAST_GCP_ERROR="O Project ID '$project_id' já existe. Escolha outro ID."
+        rm -f "$err_file"
+        return 1
+    fi
+    rm -f "$err_file"
+
+    # 3. Verificar permissão para criar projetos
+    echo -e "${BLUE}[INFO] Verificando permissões para criar projetos...${NC}"
+    ACTIVE_ACCOUNT=$(gcloud config get-value account 2>/dev/null || echo "")
+    if [ -z "$ACTIVE_ACCOUNT" ]; then
+        LAST_GCP_ERROR="Nenhuma conta GCP autenticada. Execute 'gcloud auth login' primeiro."
+        return 1
+    fi
+
+    # Tenta listar projetos para verificar permissão básica
+    if ! gcloud projects list --limit 1 >/dev/null 2>"$err_file"; then
+        local err_msg
+        err_msg=$(cat "$err_file")
+        rm -f "$err_file"
+        LAST_GCP_ERROR="Sem permissão para listar projetos: $err_msg"
+        return 1
+    fi
+    rm -f "$err_file"
+
+    # 4. Verificar limites de projetos (se houver organização)
+    echo -e "${BLUE}[INFO] Verificando limites de projetos na conta...${NC}"
+    PROJECT_COUNT=$(gcloud projects list --format="value(projectId)" 2>/dev/null | wc -l | tr -d ' ')
+    echo -e "${GREEN}[OK] Conta atualmente tem $PROJECT_COUNT projeto(s).${NC}"
+
+    # 5. Verificar se billing account está disponível (necessário para ativar APIs depois)
+    echo -e "${BLUE}[INFO] Verificando contas de billing disponíveis...${NC}"
+    BILLING_ACCOUNTS=$(gcloud billing accounts list --format="value(name)" 2>/dev/null || echo "")
+    if [ -z "$BILLING_ACCOUNTS" ]; then
+        echo -e "${YELLOW}[WARN] Nenhuma conta de billing detectada. Você precisará configurar billing após criar o projeto para habilitar APIs.${NC}"
+    else
+        BILLING_COUNT=$(echo "$BILLING_ACCOUNTS" | wc -l | tr -d ' ')
+        echo -e "${GREEN}[OK] $BILLING_COUNT conta(s) de billing disponível(is).${NC}"
+    fi
+
+    echo -e "${GREEN}[OK] Todas as validações de pré-requisitos passaram.${NC}"
+    return 0
+}
 
 # Configuração e Seleção do Project ID e Região
 CURRENT_PROJECT=$(gcloud config get-value project 2>/dev/null || echo "")
@@ -273,12 +341,74 @@ if [ -n "$CURRENT_PROJECT" ]; then
     echo -e "\nProjeto GCP atualmente ativo no gcloud: ${YELLOW}$CURRENT_PROJECT${NC}"
 fi
 
-read -p "Informe o GCP Project ID que deseja utilizar (deixe em branco para manter '$CURRENT_PROJECT'): " CHOSEN_PROJECT
+read -p "Informe o GCP Project ID que deseja utilizar (deixe em branco para manter '$CURRENT_PROJECT', ou digite 'novo' para criar um projeto): " CHOSEN_PROJECT
 CHOSEN_PROJECT=${CHOSEN_PROJECT:-$CURRENT_PROJECT}
 
-if [ -z "$CHOSEN_PROJECT" ]; then
-    echo -e "${RED}[ERROR] O Project ID do GCP não pode ser vazio.${NC}"
-    exit 1
+if [ "$CHOSEN_PROJECT" = "novo" ] || [ -z "$CHOSEN_PROJECT" ]; then
+    if [ "$CHOSEN_PROJECT" = "novo" ]; then
+        echo -e "\n${BLUE}[INFO] Criando um novo projeto GCP...${NC}"
+        read -p "Digite o nome do projeto (ex: meu-projeto-k8s): " PROJECT_NAME
+        
+        # Validação do nome do projeto
+        if [ -z "$PROJECT_NAME" ]; then
+            echo -e "${RED}[ERROR] O nome do projeto não pode ser vazio.${NC}"
+            exit 1
+        fi
+        
+        read -p "Digite o Project ID desejado (deixe em branco para gerar automaticamente): " CUSTOM_PROJECT_ID
+        
+        if [ -z "$CUSTOM_PROJECT_ID" ]; then
+            # Gerar Project ID baseado no nome com sufixo aleatório
+            RANDOM_SUFFIX=$(openssl rand -hex 4)
+            # Converter nome para formato válido (lowercase, substituir espaços por hífens)
+            SANITIZED_NAME=$(echo "$PROJECT_NAME" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -dc 'a-z0-9-')
+            CUSTOM_PROJECT_ID="${SANITIZED_NAME}-${RANDOM_SUFFIX}"
+        fi
+        
+        # Validar antes de criar
+        if ! validate_gcp_project_creation "$CUSTOM_PROJECT_ID" "$PROJECT_NAME"; then
+            echo -e "${RED}[ERROR] Validação falhou:${NC}"
+            echo -e "${RED}  $LAST_GCP_ERROR${NC}"
+            echo -e "\n${YELLOW}[DICA] Corrija o problema ou use um Project ID diferente.${NC}"
+            exit 1
+        fi
+        
+        echo -e "${BLUE}[INFO] Criando projeto '${PROJECT_NAME}' com ID '${CUSTOM_PROJECT_ID}'...${NC}"
+        if gcloud projects create "$CUSTOM_PROJECT_ID" --name="$PROJECT_NAME"; then
+            CHOSEN_PROJECT="$CUSTOM_PROJECT_ID"
+            echo -e "${GREEN}[OK] Projeto criado com sucesso!${NC}"
+            
+            # Perguntar sobre configuração de billing
+            echo -e "\n${YELLOW}[INFO] Para usar serviços GCP (GKE, etc.), você precisa configurar billing.${NC}"
+            read -p "Deseja configurar billing agora? [y/N] (padrão: N): " CONFIGURE_BILLING
+            CONFIGURE_BILLING=${CONFIGURE_BILLING:-N}
+            
+            if [[ "$CONFIGURE_BILLING" =~ ^[Yy]$ ]]; then
+                BILLING_ACCOUNTS=$(gcloud billing accounts list --format="table(name,displayName)" 2>/dev/null || echo "")
+                if [ -n "$BILLING_ACCOUNTS" ]; then
+                    echo -e "\nContas de billing disponíveis:"
+                    echo "$BILLING_ACCOUNTS"
+                    read -p "Digite o ID da conta de billing (ex: 01ABC-XYZ123): " BILLING_ID
+                    if [ -n "$BILLING_ID" ]; then
+                        echo -e "${BLUE}[INFO] Vinculando conta de billing ao projeto...${NC}"
+                        gcloud billing projects link "$CUSTOM_PROJECT_ID" --billing-account="$BILLING_ID"
+                        echo -e "${GREEN}[OK] Billing configurado com sucesso!${NC}"
+                    fi
+                else
+                    echo -e "${YELLOW}[WARN] Nenhuma conta de billing disponível. Configure manualmente no console: https://console.cloud.google.com/billing${NC}"
+                fi
+            fi
+        else
+            echo -e "${RED}[ERROR] Falha ao criar o projeto.${NC}"
+            if [ -n "$LAST_GCP_ERROR" ]; then
+                echo -e "${RED}  Detalhes: $LAST_GCP_ERROR${NC}"
+            fi
+            exit 1
+        fi
+    else
+        echo -e "${RED}[ERROR] O Project ID do GCP não pode ser vazio.${NC}"
+        exit 1
+    fi
 fi
 
 echo -e "${BLUE}[INFO] Definindo o projeto ativo para '$CHOSEN_PROJECT'...${NC}"
