@@ -2,6 +2,11 @@
 
 set -e
 
+# Unset conflicting static credential environment variables to avoid overriding the profile
+unset AWS_ACCESS_KEY_ID
+unset AWS_SECRET_ACCESS_KEY
+unset AWS_SESSION_TOKEN
+
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
@@ -249,14 +254,45 @@ get_last_sso_profile() {
     ' "$config_file"
 }
 
+# Variável para rastrear erros detalhados do STS
+LAST_STS_ERROR=""
+
+# Helper para validação robusta do STS
+validate_session() {
+    local profile="$1"
+    local region="$2"
+    local err_file
+    err_file=$(mktemp)
+
+    # Se a região não foi passada, tenta descobrir
+    if [ -z "$region" ]; then
+        region=$(aws configure get region --profile "$profile" 2>/dev/null || echo "us-east-1")
+    fi
+
+    # Executa validação capturando stderr
+    if aws sts get-caller-identity --profile "$profile" --region "$region" >/dev/null 2>"$err_file"; then
+        rm -f "$err_file"
+        return 0
+    else
+        local err_msg
+        err_msg=$(cat "$err_file")
+        rm -f "$err_file"
+        LAST_STS_ERROR="$err_msg"
+        return 1
+    fi
+}
+
 SESSION_VALID=false
 if [ -n "$AWS_PROFILE" ]; then
     echo -e "${BLUE}[INFO] Detectado perfil anterior no arquivo de ambiente: ${YELLOW}$AWS_PROFILE${NC}"
-    if aws sts get-caller-identity --profile "$AWS_PROFILE" &>/dev/null; then
+    if validate_session "$AWS_PROFILE" "$AWS_REGION"; then
         SESSION_VALID=true
         echo -e "${GREEN}[OK] Sessão activa e válida detectada para o perfil: ${YELLOW}$AWS_PROFILE${NC}"
     else
         echo -e "${YELLOW}[WARN] Sessão expirada ou inválida para o perfil: ${YELLOW}$AWS_PROFILE${NC}"
+        if [ -n "$LAST_STS_ERROR" ]; then
+            echo -e "${RED}  Detalhes do erro: $LAST_STS_ERROR${NC}"
+        fi
     fi
 fi
 
@@ -390,8 +426,10 @@ fi
 
 # Validar se a autenticação funcionou antes de prosseguir (Validação e Auto-Login)
 if [ -n "$AWS_PROFILE" ]; then
+    AWS_REGION=$(aws configure get region --profile "$AWS_PROFILE" 2>/dev/null || echo "us-east-1")
+
     echo -e "\n${BLUE}[INFO] Validando sessão ativa para o perfil '${YELLOW}$AWS_PROFILE${NC}'...${NC}"
-    if ! aws sts get-caller-identity --profile "$AWS_PROFILE" &>/dev/null; then
+    if ! validate_session "$AWS_PROFILE" "$AWS_REGION"; then
         echo -e "${YELLOW}[WARN] Sessão inválida ou expirada para o perfil '${YELLOW}$AWS_PROFILE${NC}'. Tentando login automático...${NC}"
         if aws sso login --profile "$AWS_PROFILE"; then
             echo -e "${GREEN}[OK] Login SSO realizado com sucesso.${NC}"
@@ -402,7 +440,7 @@ if [ -n "$AWS_PROFILE" ]; then
     fi
 
     # Validação final e exibição das informações do STS
-    STS_OUTPUT=$(aws sts get-caller-identity --profile "$AWS_PROFILE" 2>/dev/null || true)
+    STS_OUTPUT=$(aws sts get-caller-identity --profile "$AWS_PROFILE" --region "$AWS_REGION" 2>/dev/null || true)
     if [ -n "$STS_OUTPUT" ]; then
         ACCOUNT_ID=$(echo "$STS_OUTPUT" | awk -F'"' '/Account/ {print $4}')
         USER_ID=$(echo "$STS_OUTPUT" | awk -F'"' '/UserId/ {print $4}')
@@ -412,7 +450,13 @@ if [ -n "$AWS_PROFILE" ]; then
         echo -e "${GREEN}  - Usuário (UserId): ${YELLOW}$USER_ID${NC}"
         echo -e "${GREEN}  - ARN: ${YELLOW}$ARN${NC}"
     else
+        # Executa de novo para capturar o erro exato
+        validate_session "$AWS_PROFILE" "$AWS_REGION"
         echo -e "\n${RED}[ERROR] Nenhuma sessão ativa válida detectada na AWS para o perfil '${YELLOW}$AWS_PROFILE${NC}'. Por favor, autentique-se primeiro.${NC}"
+        if [ -n "$LAST_STS_ERROR" ]; then
+            echo -e "${RED}Detalhes do erro retornado pela AWS CLI:${NC}\n${YELLOW}$LAST_STS_ERROR${NC}"
+            echo -e "\n${BLUE}[DICA] Certifique-se de que não existem variáveis de ambiente de chaves estáticas conflitantes (ex: AWS_ACCESS_KEY_ID ou AWS_SECRET_ACCESS_KEY) ativas no seu terminal. O script já tentou limpá-las nesta execução, mas convém verificar o seu shell.${NC}"
+        fi
         exit 1
     fi
 else
