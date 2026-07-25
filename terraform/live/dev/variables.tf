@@ -36,3 +36,9 @@ variable "gcp_region" {
   description = "GCP region for GKE deployment"
   default     = "us-central1"
 }
+
+variable "gcp_zone" {
+  type        = string
+  description = "GCP zone for GKE deployment"
+  default     = "us-central1-a"
+}

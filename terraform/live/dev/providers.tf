@@ -15,12 +15,19 @@ terraform {
     }
   }
 
-  backend "s3" {
-    bucket         = "template-cluster-k8s-terraform-state-dev"
-    key            = "dev/eks-cluster/terraform.tfstate"
-    region         = "us-east-1"
-    dynamodb_table = "template-cluster-k8s-tflocks-dev"
-    encrypt        = true
+  # S3 Backend (AWS) - Commented out to use GCS as requested
+  # backend "s3" {
+  #   bucket         = "template-cluster-k8s-terraform-state-dev"
+  #   key            = "dev/eks-cluster/terraform.tfstate"
+  #   region         = "us-east-1"
+  #   dynamodb_table = "template-cluster-k8s-tflocks-dev"
+  #   encrypt        = true
+  # }
+
+  # GCS Backend (Google Cloud Storage) for GCP
+  backend "gcs" {
+    bucket = "template-cluster-k8s-terraform-state-dev"
+    prefix = "dev/gke-cluster"
   }
 }
 

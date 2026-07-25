@@ -7,6 +7,11 @@
 export AWS_PROFILE
 export AWS_REGION
 
+-include .gcp_profile_env
+export GCP_PROJECT_ID
+export GCP_REGION
+export GCP_ZONE
+
 SHELL := /usr/bin/env bash
 
 .PHONY: help config config-aws config-gcp config-azure aws gcp azure run-pipeline run pipeline
