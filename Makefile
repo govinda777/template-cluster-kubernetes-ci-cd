@@ -14,7 +14,7 @@ export GCP_ZONE
 
 SHELL := /usr/bin/env bash
 
-.PHONY: help config config-aws config-gcp config-azure aws gcp azure run-pipeline run pipeline
+.PHONY: help config config-aws config-gcp config-azure config-all config-kube aws gcp azure run-pipeline run pipeline
 
 # Trata argumentos dinâmicos para aceitar a sintaxe "make config aws" e "make run pipeline"
 ifeq ($(firstword $(MAKECMDGOALS)),config)
@@ -36,6 +36,8 @@ help:
 	@echo "  make config aws   (ou make config-aws)   - Configurar/Autenticar na AWS"
 	@echo "  make config gcp   (ou make config-gcp)   - Configurar/Autenticar no GCP"
 	@echo "  make config azure (ou make config-azure) - Configurar/Autenticar na Azure"
+	@echo "  make config all   (ou make config-all)   - Onboarding Multicloud Unificado (OIDC Bootstrap)"
+	@echo "  make config kube  (ou make config-kube)  - Configurar contexto local do Kubernetes EKS"
 	@echo "  make run pipeline (ou make run-pipeline) - Executar a Pipeline Inteira Localmente"
 	@echo "========================================================================"
 
@@ -56,6 +58,14 @@ config-gcp:
 
 config-azure:
 	@bash scripts/config-azure.sh
+
+config-all:
+	@chmod +x scripts/bootstrap-multicloud.sh
+	@bash scripts/bootstrap-multicloud.sh
+
+config-kube:
+	@chmod +x scripts/configure-kubeconfig.sh
+	@bash scripts/configure-kubeconfig.sh
 
 # Trata "make run pipeline" direcionando para "make run-pipeline"
 run:
