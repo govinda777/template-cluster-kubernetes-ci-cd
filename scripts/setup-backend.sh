@@ -63,7 +63,7 @@ if [ "$HAS_GCP" = true ]; then
 fi
 
 echo -e "${BLUE}[INFO] Inicializando Terraform/OpenTofu...${NC}"
-$TOFU_BIN init
+$TOFU_BIN init -upgrade
 
 echo -e "\n${BLUE}[INFO] Planejando criação dos recursos de backend...${NC}"
 eval "$TOFU_BIN plan $GCP_VARS -out=tfplan"
