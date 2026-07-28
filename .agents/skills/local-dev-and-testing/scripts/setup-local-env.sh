@@ -14,13 +14,9 @@ echo -e "${BLUE}================================================================
 
 # 1. Verificar Pré-requisitos
 echo "🔍 Verificando pré-requisitos..."
-for cmd in docker kind kubectl kustomize; do
-    if ! command -v "$cmd" &> /dev/null; then
-        echo -e "${RED}❌ Erro: O comando '$cmd' é requerido mas não está instalado.${NC}"
-        exit 1
-    fi
-    echo "   [OK] $cmd encontrado."
-done
+if ! bash "$(dirname "$0")/check-prerequisites.sh"; then
+    exit 1
+fi
 
 # 2. Criar Configuração do Kind
 KIND_CONFIG_PATH="/tmp/kind-local-config.yaml"

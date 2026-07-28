@@ -14,7 +14,12 @@ echo -e "${BLUE}================================================================
 echo -e "${BLUE}🧪 Executando Testes BDD / Integração Locais (Pre-push DoD)${NC}"
 echo -e "${BLUE}========================================================================${NC}"
 
-# 1. Verificar se o cluster Kind local está ativo
+# 1. Verificar Pré-requisitos
+if ! bash "$(dirname "$0")/check-prerequisites.sh"; then
+    exit 1
+fi
+
+# 2. Verificar se o cluster Kind local está ativo
 if ! kind get clusters 2>/dev/null | grep -q "^${CLUSTER_NAME}$"; then
     echo -e "${RED}❌ Erro: O cluster local '$CLUSTER_NAME' não está rodando.${NC}"
     echo -e "${YELLOW}Por favor, inicie-o executando: bash .agents/skills/local-dev-and-testing/scripts/setup-local-env.sh${NC}"
