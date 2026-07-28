@@ -28,8 +28,9 @@ fi
 
 kubectl config use-context "kind-$CLUSTER_NAME"
 
-# 2. Deploy dos manifestos da aplicação (apps-template)
-echo "🚀 Aplicando manifestos locais..."
+# 2. Criar namespace temporário e aplicar manifestos da aplicação (apps-template)
+echo "🚀 Criando namespace e aplicando manifestos locais..."
+kubectl create namespace placeholder-ns --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -f apps-template/base/deployment.yaml
 kubectl apply -f apps-template/base/service.yaml
 kubectl apply -f apps-template/base/http-route.yaml
@@ -40,18 +41,19 @@ cleanup() {
     kubectl delete -f apps-template/base/http-route.yaml --ignore-not-found=true
     kubectl delete -f apps-template/base/service.yaml --ignore-not-found=true
     kubectl delete -f apps-template/base/deployment.yaml --ignore-not-found=true
+    kubectl delete namespace placeholder-ns --ignore-not-found=true
 }
 trap cleanup EXIT
 
 # 3. Validar se os Pods iniciam e ficam Ready
 echo "⏳ Aguardando os Pods do template da aplicação ficarem prontos (app=api-example)..."
-kubectl wait --for=condition=ready pod -l app=api-example --timeout=60s
+kubectl wait --namespace placeholder-ns --for=condition=ready pod -l app=api-example --timeout=60s
 
 # 4. Validar comportamento da Gateway API / Serviço via Port-forward
 echo "🌐 Iniciando encaminhamento de porta temporário para o serviço..."
 PORT=$(python3 -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')
 
-kubectl port-forward svc/api-example-svc "$PORT":80 >/dev/null 2>&1 &
+kubectl port-forward --namespace placeholder-ns svc/api-example-svc "$PORT":80 >/dev/null 2>&1 &
 PF_PID=$!
 
 # Função para garantir a morte do processo de port-forward

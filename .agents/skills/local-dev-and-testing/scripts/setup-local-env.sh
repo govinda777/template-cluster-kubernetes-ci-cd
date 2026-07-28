@@ -53,12 +53,12 @@ kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/downloa
 
 # 5. Instalar o Envoy Gateway Controller
 echo "🛡️  Instalando Envoy Gateway Controller..."
-kubectl apply -f https://github.com/envoyproxy/gateway-helm/releases/download/v1.1.0/install.yaml
+kubectl apply --server-side -f https://github.com/envoyproxy/gateway/releases/download/v1.1.0/install.yaml
 
 # 6. Instalar o ArgoCD
 echo "📦 Instalando ArgoCD..."
 kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
-kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+kubectl apply --server-side --force-conflicts -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
 # 7. Aguardar pods ficarem prontos
 echo "⏳ Aguardando a inicialização básica do ArgoCD e do Gateway Controller..."
