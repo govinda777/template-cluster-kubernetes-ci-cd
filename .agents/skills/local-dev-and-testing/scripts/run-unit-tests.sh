@@ -12,6 +12,19 @@ echo -e "${BLUE}================================================================
 echo -e "${BLUE}⚡ Executando Testes Unitários e Análise Estática (Pre-commit DoD)${NC}"
 echo -e "${BLUE}========================================================================${NC}"
 
+# Auto-instalar dependências necessárias via Homebrew se estiverem faltando
+for cmd in yamllint conftest; do
+    if ! command -v "$cmd" &> /dev/null; then
+        echo -e "${YELLOW}ℹ️  '$cmd' não está instalado. Tentando instalar via Homebrew...${NC}"
+        if command -v brew &> /dev/null; then
+            brew install "$cmd"
+        else
+            echo -e "${RED}❌ Erro: Homebrew não encontrado. Instale '$cmd' manualmente.${NC}"
+            exit 1
+        fi
+    fi
+done
+
 # Detectar tofu ou terraform
 TOFU_BIN="tofu"
 if ! command -v tofu &> /dev/null; then
