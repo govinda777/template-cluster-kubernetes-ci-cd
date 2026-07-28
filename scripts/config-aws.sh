@@ -572,8 +572,8 @@ echo -e "${BLUE}=====================================================${NC}\n"
 
 # 4. Configuração do Git local com AWS
 echo -e "${BLUE}[INFO] Configurando o auxiliar de credenciais do Git (Credential Helper) para AWS...${NC}"
-git config --global credential.helper '!aws codecommit credential-helper $@'
-git config --global credential.UseHttpPath true
+git config --local credential.helper '!aws codecommit credential-helper $@'
+git config --local credential.UseHttpPath true
 
 echo -e "${GREEN}[OK] Git configurado com sucesso!${NC}"
 

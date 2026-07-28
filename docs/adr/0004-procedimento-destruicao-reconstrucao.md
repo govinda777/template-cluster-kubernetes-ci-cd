@@ -89,11 +89,11 @@ bash scripts/setup-backend.sh
 #### 4. Autorização Manual de Provedores OIDC Externos no GitHub (Se Aplicável)
 Se sua organização do GitHub ou conta exige aprovações adicionais para integrações OIDC ou SSH Keys de deploy, configure-as novamente no painel de configurações do repositório em *Settings -> Actions -> General*.
 
-#### 5. Re-configuração do Git Credential Helper
-Após limpar as configurações locais ou trocar de ambiente, certifique-se de reativar o Credential Helper do CodeCommit:
+#### 5. Re-configuração do Git Credential Helper (Escopo Local)
+Após limpar as configurações locais ou trocar de ambiente, certifique-se de reativar o Credential Helper do CodeCommit apenas no escopo local para não conflitar com outros repositórios:
 ```bash
-git config --global credential.helper '!aws codecommit credential-helper $@'
-git config --global credential.UseHttpPath true
+git config --local credential.helper '!aws codecommit credential-helper $@'
+git config --local credential.UseHttpPath true
 ```
 
 #### 6. Execução do Pipeline para Provisionar o Cluster
