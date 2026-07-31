@@ -1,43 +1,113 @@
-# OpenTofu
+# 🚀 Template Cluster Kubernetes CI/CD (Multi-Cloud Platform Accelerator)
 
-- [Manifesto](https://opentofu.org/manifesto)
-- [About the OpenTofu fork](https://opentofu.org/fork)
-- [How to install](https://opentofu.org/docs/intro/install)
-- [Join our Slack community!](https://opentofu.org/slack)
-- [Weekly OpenTofu Status Updates](WEEKLY_UPDATES.md)
+Bem-vindo ao **`template-cluster-kubernetes-ci-cd`**, um acelerador de plataforma corporativa projetado para fornecer infraestrutura Kubernetes multi-cloud (AWS, GCP, Azure) pronta para produção, escalável e segura.
 
-![](https://raw.githubusercontent.com/opentofu/brand-artifacts/main/full/transparent/SVG/on-dark.svg#gh-dark-mode-only)
-![](https://raw.githubusercontent.com/opentofu/brand-artifacts/main/full/transparent/SVG/on-light.svg#gh-light-mode-only)
+Este repositório estabelece um caminho pavimentado (Golden Path) para times de desenvolvimento, abstraindo a complexidade da infraestrutura e habilitando práticas modernas de Platform Engineering.
 
-OpenTofu is an OSS tool for building, changing, and versioning infrastructure safely and efficiently. OpenTofu can manage existing and popular service providers as well as custom in-house solutions.
+---
 
-The key features of OpenTofu are:
+## ✨ Principais Características
 
-- **Infrastructure as Code**: Infrastructure is described using a high-level configuration syntax. This allows a blueprint of your datacenter to be versioned and treated as you would any other code. Additionally, infrastructure can be shared and re-used.
+- **☁️ Multi-Cloud Nativo**: Suporte para provisionamento no Amazon EKS (AWS), Google Kubernetes Engine (GCP) e Azure Kubernetes Service (AKS), mitigando lock-in de provedor.
+- **🏗️ Infraestrutura como Código (IaC)**: Totalmente gerenciado usando **OpenTofu** (fork open-source do Terraform).
+- **🔄 GitOps por Padrão**: Sincronização e reconciliação contínua de estado via **ArgoCD** e `ApplicationSets` dinâmicos.
+- **🔒 Segurança Zero-Trust**: Sem chaves estáticas. Autenticação via **OIDC (OpenID Connect)** para o GitHub Actions e **Pod Identity Agent / Workload Identity** para as aplicações.
+- **🚦 Modern Networking**: Substituição dos tradicionais `Ingress` por **Kubernetes Gateway API** para roteamento de tráfego avançado e desacoplado.
+- **📊 Observabilidade Integrada**: Stack completa de monitoramento implantada via ArgoCD com **Prometheus, Grafana e Loki**.
+- **🛡️ Qualidade e Conformidade**: Políticas de configuração validadas através do **OPA (Open Policy Agent)** e **Conftest**.
 
-- **Execution Plans**: OpenTofu has a "planning" step where it generates an execution plan. The execution plan shows what OpenTofu will do when you call apply. This lets you avoid any surprises when OpenTofu manipulates infrastructure.
+---
 
-- **Resource Graph**: OpenTofu builds a graph of all your resources, and parallelizes the creation and modification of any non-dependent resources. Because of this, OpenTofu builds infrastructure as efficiently as possible, and operators get insight into dependencies in their infrastructure.
+## 📚 Documentação Oficial da Plataforma
 
-- **Change Automation**: Complex changesets can be applied to your infrastructure with minimal human interaction. With the previously mentioned execution plan and resource graph, you know exactly what OpenTofu will change and in what order, avoiding many possible human errors.
+Nossa documentação técnica é abrangente e dividida por áreas de interesse:
 
-## Getting help and contributing
+- **[🏛️ Arquitetura de Software (C4 Model) e Design](ARCHITECTURE.md)**: Visão geral topológica e decisões de arquitetura.
+- **[📖 Manual Completo da Plataforma (Platform Engineering Handbook)](PLATFORM.md)**: Guia oficial de engenharia, ciclo de vida GitOps, e roteamento de rede.
+- **[🚦 Guia de Adoção da Kubernetes Gateway API](docs/gateway-api-adoption-guide.md)**: Regras, exemplos e transição de Ingress para Gateway API.
+- **[🔑 Autenticação AWS e Integração com Git](docs/DOCS_AUTENTICACAO_AWS_GIT.md)**: Como o AWS SSO (IAM Identity Center) foi configurado para acesso seguro.
+- **[🌐 Autenticação GCP e Workload Identity](docs/DOCS_AUTENTICACAO_GCP_WIF.md)**: Guia de onboarding para provisionar e acessar recursos do Google Cloud via WIF.
+- **[🚑 Recuperação e Acesso ao EKS](docs/eks-access-recovery-guide.md)**: Guia técnico de recuperação de acesso utilizando EKS Access Entries.
+- **[💥 ADR-004: Procedimento de Destruição e Reconstrução](docs/adr/0004-procedimento-destruicao-reconstrucao.md)**: Processo documentado para testes de "Clean Slate" em Disaster Recovery.
 
-- Have a question? Post it in [GitHub Discussions](https://github.com/orgs/opentofu/discussions) or on the [OpenTofu Slack](https://opentofu.org/slack/)!
-- Want to contribute? Please read the [Contribution Guide](CONTRIBUTING.md).
-- Want to stay up to date? Read the [weekly updates](WEEKLY_UPDATES.md), [TSC summary](TSC_SUMMARY.md), or join the [community meetings](https://meet.google.com/xfm-cgms-has) on Wednesdays at 14:30 CET / 8:30 AM Eastern / 5:30 AM Western / 19:00 India time on this link: https://meet.google.com/xfm-cgms-has ([📅 calendar link](https://calendar.google.com/calendar/event?eid=NDg0aWl2Y3U1aHFva3N0bGhyMHBhNzdpZmsgY18zZjJkZDNjMWZlMGVmNGU5M2VmM2ZjNDU2Y2EyZGQyMTlhMmU4ZmQ4NWY2YjQwNzUwYWYxNmMzZGYzNzBiZjkzQGc))
+---
 
-> [!TIP]
-> For more OpenTofu events, subscribe to the [OpenTofu Events Calendar](https://calendar.google.com/calendar/embed?src=c_3f2dd3c1fe0ef4e93ef3fc456ca2dd219a2e8fd85f6b40750af16c3df370bf93%40group.calendar.google.com)!
+## 🚀 Quickstart e Onboarding
 
-## Reporting security vulnerabilities
-If you've found a vulnerability or a potential vulnerability in OpenTofu please follow [Security Policy](https://github.com/opentofu/opentofu/security/policy). We'll send a confirmation email to acknowledge your report, and we'll send an additional email when we've identified the issue positively or negatively.
+A plataforma utiliza um `Makefile` unificado para simplificar todo o processo de autenticação e validação local, além de scripts inteligentes que configuram o ambiente na sua máquina de forma interativa.
 
-## Reporting possible copyright issues
+### 1. Autenticação na Nuvem Desejada (SSO)
 
-If you believe you have found any possible copyright or intellectual property issues, please contact liaison@opentofu.org. We'll send a confirmation email to acknowledge your report.
+Dependendo de onde você deseja implantar seu ambiente, execute o assistente de configuração (ele instalará dependências ausentes, fará login SSO via browser e persistirá seu perfil localmente em um `.env`):
 
-## License
+- **Para AWS:**
 
-[Mozilla Public License v2.0](https://github.com/opentofu/opentofu/blob/main/LICENSE)
+    ```bash
+    make config aws
+    ```
 
+- **Para GCP:**
+
+    ```bash
+    make config gcp
+    ```
+
+- **Para Azure:**
+
+    ```bash
+    make config azure
+    ```
+
+*Alternativa: Para rodar um bootstrap global de OIDC/WIF de uma vez, execute `make config all`.*
+
+### 2. Configurar o Kubeconfig Local
+
+Após provisionar um cluster de desenvolvimento (via pipeline), configure o seu contexto `kubectl` local rodando:
+
+```bash
+make config kube
+```
+
+### 3. Testar o Pipeline Localmente
+
+Você pode emular os estágios exatos do GitHub Actions (Pre-flight checks, Tofu Plan, Validações) no seu terminal antes de fazer um push ou abrir um Pull Request:
+
+```bash
+make run pipeline
+```
+
+*(Se não houver bucket S3 remoto configurado, este script falhará de forma segura para o backend local do Tofu em sua máquina, restaurando as configurações assim que finalizar).*
+
+---
+
+## 📂 Estrutura do Repositório
+
+```text
+.
+├── .github/                  # Workflows de CI/CD (GitHub Actions)
+├── apps-template/            # Templates (Golden Paths) para onboarding de aplicações
+├── crossplane/               # Manifestos de recursos gerenciados (AWS RDS, etc) via Crossplane
+├── docs/                     # Guias técnicos, Manuais operacionais e ADRs
+├── platform-apps/            # Helm charts e manifestos gerenciados pelo ArgoCD (Observabilidade, etc)
+├── scripts/                  # Scripts bash interativos (autenticação, pipelines locais, utilitários)
+├── terraform/                # Código de infraestrutura (OpenTofu)
+│   ├── bootstrap/            # Configuração global de provedores de identidade (OIDC GitHub)
+│   ├── live/                 # Ambientes instanciados (dev/ e prod/)
+│   └── modules/              # Módulos reutilizáveis (vpc, eks, gke, etc)
+└── tests/                    # Suíte de testes de integração (Terratest em Go)
+```
+
+---
+
+## 🤝 Contribuição e Pipelines CI/CD
+
+Todas as contribuições devem passar pelo nosso fluxo rigoroso de CI/CD. Qualquer Pull Request criado engatilhará o arquivo `.github/workflows/ci-cd.yml`, que executará os seguintes passos de forma automatizada:
+
+1. **Code Linting & Formatting**: `tofu fmt`, `yamllint`, etc.
+2. **Security Scans e OPA Validations**: Garantia contra recursos obsoletos.
+3. **Tofu Plan (Dry-run)**: Validação do plano de execução em `dev` e `prod`.
+4. *(Somente na branch principal)* **Tofu Apply**: Implantação progressiva.
+5. **Testes E2E (Terratest)**: Verificação efêmera da infraestrutura via scripts Go.
+
+---
+> Desenvolvido com foco na experiência do desenvolvedor e padrões de confiabilidade do SRE.
