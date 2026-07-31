@@ -1,6 +1,8 @@
-# 🚀 Template Cluster Kubernetes CI/CD (Multi-Cloud Platform Accelerator)
+# 🚀 Cluster Kubernetes CI/CD (Multi-Cloud Platform Accelerator)
 
-Bem-vindo ao **`template-cluster-kubernetes-ci-cd`**, um acelerador de plataforma corporativa projetado para fornecer infraestrutura Kubernetes multi-cloud (AWS, GCP, Azure) pronta para produção, escalável e segura.
+![](./banner.png)
+
+Bem-vindo ao **`cluster-kubernetes-ci-cd`**, um acelerador de plataforma corporativa projetado para fornecer infraestrutura Kubernetes multi-cloud (AWS, GCP, Azure) pronta para produção, escalável e segura.
 
 Este repositório estabelece um caminho pavimentado (Golden Path) para times de desenvolvimento, abstraindo a complexidade da infraestrutura e habilitando práticas modernas de Platform Engineering.
 
