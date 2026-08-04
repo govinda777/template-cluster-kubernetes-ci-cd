@@ -117,6 +117,15 @@ echo -e "\n${BLUE}[INFO] 5. Iniciando Processo de Reconstrução Completa...${NC
 chmod +x scripts/bootstrap-multicloud.sh
 ./scripts/bootstrap-multicloud.sh
 
+# Detectar se o faturamento (billing) está habilitado no GCP para ativar ou não o GKE
+ENABLE_GKE_VAL="false"
+if gcloud beta billing projects describe "$GCP_PROJECT_ID" --format="value(billingEnabled)" 2>/dev/null | grep -q "true"; then
+    echo -e "${GREEN}[INFO] Faturamento (billing) ativo no GCP. Provisionando GKE no teste.${NC}"
+    ENABLE_GKE_VAL="true"
+else
+    echo -e "${YELLOW}[WARN] Faturamento (billing) INATIVO no GCP para o projeto '$GCP_PROJECT_ID'. GKE será desativado no teste para evitar falhas.${NC}"
+fi
+
 # Re-aplicar Dev
 echo -e "\n${BLUE}[INFO] 6. Provisionando ambiente de Desenvolvimento (Dev)...${NC}"
 cd terraform/live/dev
@@ -125,7 +134,7 @@ $TOFU_BIN apply -auto-approve \
   -var="aws_region=$AWS_REGION" \
   -var="gcp_project_id=$GCP_PROJECT_ID" \
   -var="gcp_region=$GCP_REGION" \
-  -var="enable_gke=true"
+  -var="enable_gke=$ENABLE_GKE_VAL"
 cd ../../..
 
 echo -e "\n${GREEN}========================================================================${NC}"

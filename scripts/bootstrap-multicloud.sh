@@ -92,6 +92,46 @@ export AWS_REGION="$AWS_REGION"
 
 cd terraform/bootstrap
 $TOFU_BIN init -upgrade
+
+# Verificar e tratar pool OIDC/WIF existente/soft-deletado no GCP
+POOL_ID="github-actions-pool"
+PROVIDER_ID="github-actions-provider"
+
+# Obter estado do pool no GCP
+POOL_STATE=$(gcloud iam workload-identity-pools describe "$POOL_ID" --location=global --format="value(state)" 2>/dev/null || echo "NOT_EXISTS")
+if [ "$POOL_STATE" = "DELETED" ]; then
+    echo -e "${YELLOW}[INFO] Detectado Workload Identity Pool soft-deletado no GCP. Restaurando...${NC}"
+    gcloud iam workload-identity-pools undelete "$POOL_ID" --location=global >/dev/null 2>&1 || true
+    POOL_STATE="ACTIVE"
+fi
+
+if [ "$POOL_STATE" = "ACTIVE" ]; then
+    echo -e "${YELLOW}[INFO] Pool '$POOL_ID' já existe no GCP. Importando para o estado do OpenTofu...${NC}"
+    $TOFU_BIN import \
+      -var="aws_region=$AWS_REGION" \
+      -var="github_org_repo=$GITHUB_REPO" \
+      -var="gcp_project_id=$GCP_PROJECT_ID" \
+      -var="gcp_region=$GCP_REGION" \
+      google_iam_workload_identity_pool.github "projects/$GCP_PROJECT_ID/locations/global/workloadIdentityPools/$POOL_ID" >/dev/null 2>&1 || true
+
+    # Verificar e tratar o Provider
+    PROVIDER_STATE=$(gcloud iam workload-identity-pools providers describe "$PROVIDER_ID" --workload-identity-pool="$POOL_ID" --location=global --format="value(state)" 2>/dev/null || echo "NOT_EXISTS")
+    if [ "$PROVIDER_STATE" = "DELETED" ]; then
+        echo -e "${YELLOW}[INFO] Detectado Provider soft-deletado no GCP. Restaurando...${NC}"
+        gcloud iam workload-identity-pools providers undelete "$PROVIDER_ID" --workload-identity-pool="$POOL_ID" --location=global >/dev/null 2>&1 || true
+        PROVIDER_STATE="ACTIVE"
+    fi
+    if [ "$PROVIDER_STATE" = "ACTIVE" ]; then
+        echo -e "${YELLOW}[INFO] Provider '$PROVIDER_ID' já existe no GCP. Importando para o estado do OpenTofu...${NC}"
+        $TOFU_BIN import \
+          -var="aws_region=$AWS_REGION" \
+          -var="github_org_repo=$GITHUB_REPO" \
+          -var="gcp_project_id=$GCP_PROJECT_ID" \
+          -var="gcp_region=$GCP_REGION" \
+          google_iam_workload_identity_pool_provider.github "projects/$GCP_PROJECT_ID/locations/global/workloadIdentityPools/$POOL_ID/providers/$PROVIDER_ID" >/dev/null 2>&1 || true
+    fi
+fi
+
 $TOFU_BIN apply -auto-approve \
   -var="aws_region=$AWS_REGION" \
   -var="github_org_repo=$GITHUB_REPO" \
