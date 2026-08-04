@@ -39,6 +39,7 @@ help:
 	@echo "  make config all   (ou make config-all)   - Onboarding Multicloud Unificado (OIDC Bootstrap)"
 	@echo "  make config kube  (ou make config-kube)  - Configurar contexto local do Kubernetes EKS"
 	@echo "  make run pipeline (ou make run-pipeline) - Executar a Pipeline Inteira Localmente"
+	@echo "  make run clean-slate                    - Executar teste integrado de destruição e reconstrução"
 	@echo "========================================================================"
 
 # Regra principal para rota com espaço
@@ -67,14 +68,20 @@ config-kube:
 	@chmod +x scripts/configure-kubeconfig.sh
 	@bash scripts/configure-kubeconfig.sh
 
-# Trata "make run pipeline" direcionando para "make run-pipeline"
+# Trata "make run pipeline" / "make run clean-slate"
 run:
 	@if [ "$(ACTION)" = "pipeline" ]; then \
 		$(MAKE) run-pipeline; \
+	elif [ "$(ACTION)" = "clean-slate" ]; then \
+		$(MAKE) run-clean-slate; \
 	else \
-		echo "Erro: Comando inválido. Use 'make run pipeline' ou 'make run-pipeline'"; \
+		echo "Erro: Comando inválido. Use 'make run pipeline' ou 'make run clean-slate'"; \
 		exit 1; \
 	fi
 
 run-pipeline:
 	@bash scripts/run-pipeline.sh
+
+run-clean-slate:
+	@chmod +x scripts/destroy-recreate-test.sh
+	@bash scripts/destroy-recreate-test.sh

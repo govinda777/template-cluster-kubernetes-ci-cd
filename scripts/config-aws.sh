@@ -536,8 +536,21 @@ if [[ "$RUN_BOOTSTRAP" =~ ^[Yy]$ ]]; then
     # Atualiza a região exportada se o usuário escolheu outra
     export AWS_REGION="$AWS_REG"
 
+    # Carregar variáveis do GCP se existirem para herança no bootstrap
+    GCP_PROJECT_VAR=""
+    GCP_REGION_VAR=""
+    if [ -f "../../.gcp_profile_env" ]; then
+        source "../../.gcp_profile_env"
+        if [ -n "$GCP_PROJECT_ID" ]; then
+            GCP_PROJECT_VAR="-var=gcp_project_id=$GCP_PROJECT_ID"
+        fi
+        if [ -n "$GCP_REGION" ]; then
+            GCP_REGION_VAR="-var=gcp_region=$GCP_REGION"
+        fi
+    fi
+
     echo -e "\n${BLUE}[INFO] Aplicando recursos na AWS via OpenTofu/Terraform...${NC}"
-    $TOFU_BIN apply -auto-approve -var="aws_region=$AWS_REG" -var="github_org_repo=$GITHUB_REPO"
+    $TOFU_BIN apply -auto-approve -var="aws_region=$AWS_REG" -var="github_org_repo=$GITHUB_REPO" ${GCP_PROJECT_VAR} ${GCP_REGION_VAR}
 
     # Capturar outputs
     echo -e "\n${BLUE}[INFO] Capturando saídas do Terraform...${NC}"

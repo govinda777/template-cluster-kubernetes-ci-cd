@@ -38,19 +38,21 @@ for BUCKET in "${BUCKETS[@]}"; do
     if gcloud storage buckets describe "gs://$BUCKET" &>/dev/null; then
         echo -e "${GREEN}[OK] Bucket GCS 'gs://$BUCKET' já existe.${NC}"
     else
-        echo -e "${YELLOW}[INFO] Criando Bucket GCS 'gs://$BUCKET'...${NC}"
-        gcloud storage buckets create "gs://$BUCKET" \
+        if gcloud storage buckets create "gs://$BUCKET" \
             --project="$GCP_PROJECT_ID" \
             --location="US" \
-            --uniform-bucket-level-access
+            --uniform-bucket-level-access 2>/dev/null; then
 
-        # Habilitar versionamento
-        gcloud storage buckets update "gs://$BUCKET" --versioning
+            # Habilitar versionamento
+            gcloud storage buckets update "gs://$BUCKET" --versioning >/dev/null 2>&1 || true
 
-        # Prevenção de Acesso Público
-        gcloud storage buckets update "gs://$BUCKET" --public-access-prevention
+            # Prevenção de Acesso Público
+            gcloud storage buckets update "gs://$BUCKET" --public-access-prevention >/dev/null 2>&1 || true
 
-        echo -e "${GREEN}[OK] Bucket GCS 'gs://$BUCKET' criado e configurado com sucesso!${NC}"
+            echo -e "${GREEN}[OK] Bucket GCS 'gs://$BUCKET' criado e configurado com sucesso!${NC}"
+        else
+            echo -e "${YELLOW}[WARN] Não foi possível criar o Bucket GCS 'gs://$BUCKET'. Verifique se o faturamento (billing) está ativo no projeto GCP ou se possui as permissões necessárias.${NC}"
+        fi
     fi
 done
 

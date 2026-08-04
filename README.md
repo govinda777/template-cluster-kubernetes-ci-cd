@@ -1,115 +1,97 @@
-# 🚀 Cluster Kubernetes CI/CD (Multi-Cloud Platform Accelerator)
+# 🌐 Multi-Cloud Kubernetes & CI/CD Template
 
-![](./banner.png)
+[![Kubernetes](https://img.shields.io/badge/kubernetes-%23326ce5.svg?style=flat&logo=kubernetes&logoColor=white)](https://kubernetes.io)
+[![OpenTofu](https://img.shields.io/badge/OpenTofu-%23FFDA1A.svg?style=flat&logo=opentofu&logoColor=black)](https://opentofu.org)
+[![ArgoCD](https://img.shields.io/badge/ArgoCD-%23EF7B4D.svg?style=flat&logo=argo&logoColor=white)](https://argoproj.github.io/cd/)
+[![Cilium](https://img.shields.io/badge/Cilium-%23F7F9FB.svg?style=flat&logo=cilium&logoColor=black)](https://cilium.io)
+[![AWS](https://img.shields.io/badge/AWS-%23FF9900.svg?style=flat&logo=amazon-aws&logoColor=white)](https://aws.amazon.com)
+[![GCP](https://img.shields.io/badge/GCP-%234285F4.svg?style=flat&logo=google-cloud&logoColor=white)](https://cloud.google.com)
 
-Bem-vindo ao **`cluster-kubernetes-ci-cd`**, um acelerador de plataforma corporativa projetado para fornecer infraestrutura Kubernetes multi-cloud (AWS, GCP, Azure) pronta para produção, escalável e segura.
-
-Este repositório estabelece um caminho pavimentado (Golden Path) para times de desenvolvimento, abstraindo a complexidade da infraestrutura e habilitando práticas modernas de Platform Engineering.
-
----
-
-## ✨ Principais Características
-
-- **☁️ Multi-Cloud Nativo**: Suporte para provisionamento no Amazon EKS (AWS), Google Kubernetes Engine (GCP) e Azure Kubernetes Service (AKS), mitigando lock-in de provedor.
-- **🏗️ Infraestrutura como Código (IaC)**: Totalmente gerenciado usando **OpenTofu** (fork open-source do Terraform).
-- **🔄 GitOps por Padrão**: Sincronização e reconciliação contínua de estado via **ArgoCD** e `ApplicationSets` dinâmicos.
-- **🔒 Segurança Zero-Trust**: Sem chaves estáticas. Autenticação via **OIDC (OpenID Connect)** para o GitHub Actions e **Pod Identity Agent / Workload Identity** para as aplicações.
-- **🚦 Modern Networking**: Substituição dos tradicionais `Ingress` por **Kubernetes Gateway API** para roteamento de tráfego avançado e desacoplado.
-- **📊 Observabilidade Integrada**: Stack completa de monitoramento implantada via ArgoCD com **Prometheus, Grafana e Loki**.
-- **🛡️ Qualidade e Conformidade**: Políticas de configuração validadas através do **OPA (Open Policy Agent)** e **Conftest**.
+Este repositório é um **Acelerador de Plataforma (Platform Accelerator)** pronto para produção, multi-cloud (AWS, GCP, Azure) e totalmente declarativo. Ele viabiliza o provisionamento seguro de clusters Kubernetes, automatiza pipelines de CI/CD e estabelece um caminho pavimentado (**Golden Path**) para que times de desenvolvimento façam o deploy de workloads de forma segura, escalável e autônoma.
 
 ---
 
-## 📚 Documentação Oficial da Plataforma
+## 🎯 O que o projeto faz?
 
-Nossa documentação técnica é abrangente e dividida por áreas de interesse:
+Este projeto resolve as principais dores de infraestrutura moderna e Platform Engineering, abstraindo complexidades de nuvem e automatizando o ciclo de vida completo de aplicações através de:
 
-- **[🏛️ Arquitetura de Software (C4 Model) e Design](ARCHITECTURE.md)**: Visão geral topológica e decisões de arquitetura.
-- **[📖 Manual Completo da Plataforma (Platform Engineering Handbook)](PLATFORM.md)**: Guia oficial de engenharia, ciclo de vida GitOps, e roteamento de rede.
-- **[🚦 Guia de Adoção da Kubernetes Gateway API](docs/gateway-api-adoption-guide.md)**: Regras, exemplos e transição de Ingress para Gateway API.
-- **[🔑 Autenticação AWS e Integração com Git](docs/DOCS_AUTENTICACAO_AWS_GIT.md)**: Como o AWS SSO (IAM Identity Center) foi configurado para acesso seguro.
-- **[🌐 Autenticação GCP e Workload Identity](docs/DOCS_AUTENTICACAO_GCP_WIF.md)**: Guia de onboarding para provisionar e acessar recursos do Google Cloud via WIF.
-- **[🚑 Recuperação e Acesso ao EKS](docs/eks-access-recovery-guide.md)**: Guia técnico de recuperação de acesso utilizando EKS Access Entries.
-- **[💥 ADR-004: Procedimento de Destruição e Reconstrução](docs/adr/0004-procedimento-destruicao-reconstrucao.md)**: Processo documentado para testes de "Clean Slate" em Disaster Recovery.
+1. **Infraestrutura como Código (IaC) Modular**: Provisionamento automatizado de redes (VPCs) e clusters Kubernetes (AWS EKS, GCP GKE, Azure AKS) usando **OpenTofu/Terraform**.
+2. **GitOps Nativo com ArgoCD**: Sincronização automática e detecção de desvios (*drift detection*) usando `ApplicationSets` dinâmicos baseados em labels de clusters.
+3. **Rede Moderna e Desacoplada**: Implementação de roteamento inteligente de tráfego usando a **Kubernetes Gateway API** (substituindo Ingress legados por HTTPRoutes gerenciados por papéis).
+4. **Segurança Zero-Trust e Keyless**:
+   - Integração das pipelines do GitHub Actions por meio de **OIDC (OpenID Connect)** eliminando senhas e chaves estáticas de CI/CD.
+   - Associação de privilégios a Pods de forma dinâmica via **EKS Pod Identity** (AWS) e **Workload Identity** (GCP/Azure).
+5. **Gestão Segura de Segredos**: Sincronização dinâmica de segredos no Kubernetes a partir de gerenciadores de nuvem (como AWS Secrets Manager) usando o **External Secrets Operator (ESO)**.
+6. **Políticas como Código e Governança**: Validação contínua de segurança e arquitetura dos manifestos Kubernetes com **OPA (Open Policy Agent) / Conftest**.
+7. **Ambiente Local Autossuficiente (ADR 0006)**: Provisionamento local com um único comando de um cluster **Kind (Kubernetes in Docker)** com Envoy Gateway, ArgoCD e validação contínua automatizada por Git Hooks (`pre-commit` para testes unitários/lint e `pre-push` para testes BDD).
 
 ---
 
-## 🚀 Quickstart e Onboarding
+## 🗺️ Mapa de Documentação Técnica
 
-A plataforma utiliza um `Makefile` unificado para simplificar todo o processo de autenticação e validação local, além de scripts inteligentes que configuram o ambiente na sua máquina de forma interativa.
+Toda a arquitetura e guias operacionais estão estruturados detalhadamente no repositório. Use os links abaixo para explorar as especificações técnicas:
 
-### 1. Autenticação na Nuvem Desejada (SSO)
+### 🏛️ Arquitetura de Software e Decisões
+*   **[ARCHITECTURE.md](file:///Users/govinda/projetos/template-cluster-kubernetes-ci-cd/ARCHITECTURE.md)**: Visão geral da arquitetura, princípios de design, fluxos de tráfego inbound e diagramas nos níveis C4 (Contexto, Containers e Roteamento).
+*   **Decisões Arquiteturais ([ADRs](file:///Users/govinda/projetos/template-cluster-kubernetes-ci-cd/docs/adr))**:
+    *   [ADR 0001: Substituição de Ingress por Kubernetes Gateway API](file:///Users/govinda/projetos/template-cluster-kubernetes-ci-cd/docs/adr/0001-substituicao-ingress-gateway-api.md)
+    *   [ADR 0002: Adoção de GitOps com ArgoCD e ApplicationSets](file:///Users/govinda/projetos/template-cluster-kubernetes-ci-cd/docs/adr/0002-adocao-gitops-argocd.md)
+    *   [ADR 0003: Padrão de Autenticação Keyless entre GitHub e AWS](file:///Users/govinda/projetos/template-cluster-kubernetes-ci-cd/docs/adr/0003-padrao-autenticacao-keyless-github-aws%20copy.md)
+    *   [ADR 0004: Procedimento de Destruição e Reconstrução Segura](file:///Users/govinda/projetos/template-cluster-kubernetes-ci-cd/docs/adr/0004-procedimento-destruicao-reconstrucao.md)
+    *   [ADR 0005: Observabilidade e Monitoramento Centralizado](file:///Users/govinda/projetos/template-cluster-kubernetes-ci-cd/docs/adr/0005-observability.md)
+    *   [ADR 0005-B: Automação Unificada de Onboarding Multicloud](file:///Users/govinda/projetos/template-cluster-kubernetes-ci-cd/docs/adr/0005-automacao-unificada-onboarding-multicloud.md)
+    *   [ADR 0006: Ambiente de Desenvolvimento e Testes Local](file:///Users/govinda/projetos/template-cluster-kubernetes-ci-cd/docs/adr/0006-ambiente-desenvolvimento-local.md)
 
-Dependendo de onde você deseja implantar seu ambiente, execute o assistente de configuração (ele instalará dependências ausentes, fará login SSO via browser e persistirá seu perfil localmente em um `.env`):
+### 📖 Manuais e Guias Operacionais
+*   **[PLATFORM.md](file:///Users/govinda/projetos/template-cluster-kubernetes-ci-cd/PLATFORM.md)**: Manual do Engenheiro de Plataforma (Platform Engineering Handbook). Detalha a governança, estratégias Multi-Cloud (Ativo-Ativo e Warm Standby), integração de identidades (EKS Pod Identity) e monitoramento.
+*   **[Gateway API Adoption Guide](file:///Users/govinda/projetos/template-cluster-kubernetes-ci-cd/docs/gateway-api-adoption-guide.md)**: Manual de adoção prática da Gateway API, contendo exemplos reais de `HTTPRoute`, políticas de TLS e troubleshooting de tráfego.
+*   **[Quick Start Local (ADR 0006)](file:///Users/govinda/projetos/template-cluster-kubernetes-ci-cd/docs/QUICK_START_LOCAL.md)**: Passo a passo simplificado para subir o ambiente local de testes e CI/CD simulado utilizando Docker e Kind.
+*   **[Guia de Autenticação AWS SSO](file:///Users/govinda/projetos/template-cluster-kubernetes-ci-cd/docs/DOCS_AUTENTICACAO_AWS_GIT.md)**: Detalhamento sobre o fluxo sem chaves e autenticação via IAM Identity Center.
+*   **[Guia de Autenticação GCP Workload Identity](file:///Users/govinda/projetos/template-cluster-kubernetes-ci-cd/docs/DOCS_AUTENTICACAO_GCP_WIF.md)**: Instruções sobre federação de identidade e autenticação no GCP sem chaves.
+*   **[Guia de Observabilidade](file:///Users/govinda/projetos/template-cluster-kubernetes-ci-cd/docs/DOCS_OBSERVABILIDADE.md)**: Documentação sobre Prometheus, Grafana, Loki e métricas agregadas da plataforma.
+*   **[EKS Access Recovery Guide](file:///Users/govinda/projetos/template-cluster-kubernetes-ci-cd/docs/eks-access-recovery-guide.md)**: Procedimento operacional padrão (SOP) para recuperação e mitigação de perda de acesso administrativo no AWS EKS.
 
-- **Para AWS:**
+---
 
-    ```bash
-    make config aws
-    ```
+## 🛠️ Como Iniciar
 
-- **Para GCP:**
+A plataforma conta com uma camada de automação unificada através de um [Makefile](file:///Users/govinda/projetos/template-cluster-kubernetes-ci-cd/Makefile) e scripts utilitários.
 
-    ```bash
-    make config gcp
-    ```
-
-- **Para Azure:**
-
-    ```bash
-    make config azure
-    ```
-
-*Alternativa: Para rodar um bootstrap global de OIDC/WIF de uma vez, execute `make config all`.*
-
-### 2. Configurar o Kubeconfig Local
-
-Após provisionar um cluster de desenvolvimento (via pipeline), configure o seu contexto `kubectl` local rodando:
-
+### 1. Desenvolvimento e Validação Local (Sem Nuvem)
+Se você deseja experimentar a plataforma localmente no Docker usando Kind:
 ```bash
-make config kube
+# 1. Instale os git hooks locais (DoD automatizado)
+bash .agents/skills/local-dev-and-testing/scripts/install-hooks.sh
+
+# 2. Inicialize o cluster local com ArgoCD e Gateway API
+bash .agents/skills/local-dev-and-testing/scripts/setup-local-env.sh
+
+# 3. Rode os testes locais simulando pipelines (Unitários/Rego e BDD)
+bash .agents/skills/local-dev-and-testing/scripts/run-unit-tests.sh
+bash .agents/skills/local-dev-and-testing/scripts/run-bdd-tests.sh
 ```
 
-### 3. Testar o Pipeline Localmente
-
-Você pode emular os estágios exatos do GitHub Actions (Pre-flight checks, Tofu Plan, Validações) no seu terminal antes de fazer um push ou abrir um Pull Request:
-
+### 2. Onboarding na Nuvem (AWS & GCP)
+Para configurar e se autenticar de forma automática nos provedores de nuvem utilizando melhores práticas (AWS SSO, OIDC, gcloud CLI):
 ```bash
-make run pipeline
-```
+# Configurar e autenticar na AWS
+make config aws
 
-*(Se não houver bucket S3 remoto configurado, este script falhará de forma segura para o backend local do Tofu em sua máquina, restaurando as configurações assim que finalizar).*
+# Configurar e autenticar no GCP
+make config gcp
 
----
-
-## 📂 Estrutura do Repositório
-
-```text
-.
-├── .github/                  # Workflows de CI/CD (GitHub Actions)
-├── apps-template/            # Templates (Golden Paths) para onboarding de aplicações
-├── crossplane/               # Manifestos de recursos gerenciados (AWS RDS, etc) via Crossplane
-├── docs/                     # Guias técnicos, Manuais operacionais e ADRs
-├── platform-apps/            # Helm charts e manifestos gerenciados pelo ArgoCD (Observabilidade, etc)
-├── scripts/                  # Scripts bash interativos (autenticação, pipelines locais, utilitários)
-├── terraform/                # Código de infraestrutura (OpenTofu)
-│   ├── bootstrap/            # Configuração global de provedores de identidade (OIDC GitHub)
-│   ├── live/                 # Ambientes instanciados (dev/ e prod/)
-│   └── modules/              # Módulos reutilizáveis (vpc, eks, gke, etc)
-└── tests/                    # Suíte de testes de integração (Terratest em Go)
+# Executar o setup completo de OIDC federado multi-cloud
+make config all
 ```
 
 ---
 
-## 🤝 Contribuição e Pipelines CI/CD
+## 📁 Estrutura de Pastas
 
-Todas as contribuições devem passar pelo nosso fluxo rigoroso de CI/CD. Qualquer Pull Request criado engatilhará o arquivo `.github/workflows/ci-cd.yml`, que executará os seguintes passos de forma automatizada:
-
-1. **Code Linting & Formatting**: `tofu fmt`, `yamllint`, etc.
-2. **Security Scans e OPA Validations**: Garantia contra recursos obsoletos.
-3. **Tofu Plan (Dry-run)**: Validação do plano de execução em `dev` e `prod`.
-4. *(Somente na branch principal)* **Tofu Apply**: Implantação progressiva.
-5. **Testes E2E (Terratest)**: Verificação efêmera da infraestrutura via scripts Go.
-
----
-> Desenvolvido com foco na experiência do desenvolvedor e padrões de confiabilidade do SRE.
+*   `terraform/`: Código de infraestrutura IaC (OpenTofu) contendo módulos reutilizáveis e ambientes `live/`.
+*   `crossplane/`: Configurações declarativas para provisionar recursos de nuvem gerenciados de dentro do Kubernetes.
+*   `platform-apps/`: Manifestos e Helm charts globais instalados no cluster (ArgoCD, Cilium, Gateway Controllers, ESO).
+*   `apps-template/`: Templates e exemplos de aplicação/workload de microsserviços integrados com a Gateway API.
+*   `scripts/`: Ferramentas auxiliares de onboarding, login, validação e gerenciamento.
+*   `docs/`: Documentações técnicas adicionais e Registros de Decisão de Arquitetura (ADRs).
+*   `tests/`: Scripts e definições de testes BDD e unitários locais.
