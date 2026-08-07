@@ -67,6 +67,45 @@ kubectl wait --namespace argocd \
   --selector=app.kubernetes.io/name=argocd-server \
   --timeout=180s || echo -e "${YELLOW}⚠️  Aviso: Timeout esperando o servidor ArgoCD. Continuando...${NC}"
 
+# 8. Instalar Banco de Dados PostgreSQL (Local Dev)
+echo "💾 Configurando Banco de Dados PostgreSQL para o n8n..."
+kubectl create namespace database --dry-run=client -o yaml | kubectl apply -f -
+kubectl apply -f platform-apps/infrastructure-apps/postgres/secret.yaml
+kubectl apply -f platform-apps/infrastructure-apps/postgres/local-deployment.yaml
+
+# 9. Configurar Gateway local
+echo "🌐 Configurando Gateway API local..."
+kubectl apply -f platform-apps/infrastructure-apps/n8n/local-gateway.yaml
+
+# 10. Instalar n8n
+echo "🤖 Instalando n8n..."
+kubectl create namespace platform-tools --dry-run=client -o yaml | kubectl apply -f -
+kubectl apply -f platform-apps/infrastructure-apps/n8n/secret.yaml
+kubectl apply -f platform-apps/infrastructure-apps/n8n/deployment.yaml
+kubectl apply -f platform-apps/infrastructure-apps/n8n/service.yaml
+kubectl apply -f platform-apps/infrastructure-apps/n8n/http-route.yaml
+
+# 11. Aguardar Banco de Dados e n8n ficarem prontos
+echo "⏳ Aguardando Banco de Dados PostgreSQL..."
+kubectl wait --namespace database \
+  --for=condition=ready pod \
+  -l app=postgresql-dev \
+  --timeout=120s
+
+echo "⏳ Aguardando n8n ficar pronto..."
+kubectl wait --namespace platform-tools \
+  --for=condition=ready pod \
+  -l app=n8n \
+  --timeout=120s
+
+# 12. Iniciar Port-Forward para o n8n em background
+echo "🔌 Iniciando port-forward para o n8n na porta 5678..."
+# Matar port-forwards anteriores na mesma porta se existirem
+pkill -f "port-forward.*n8n-service" || true
+nohup kubectl port-forward --namespace platform-tools svc/n8n-service 5678:5678 >/dev/null 2>&1 &
+
 echo -e "${GREEN}========================================================================${NC}"
 echo -e "${GREEN}🎉 Ambiente Local Prontinho!${NC}"
+echo -e "${GREEN}🚀 Acesse o n8n em: http://localhost:5678${NC}"
 echo -e "${GREEN}========================================================================${NC}"
+
