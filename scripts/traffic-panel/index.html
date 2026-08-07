@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Controle de Tráfego Multi-Cloud (Route 53)</title>
+    <link rel="stylesheet" href="index.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="glass-container">
+        <header>
+            <div class="logo-area">
+                <span class="pulse-dot"></span>
+                <h1>Painel de Controle de Tráfego</h1>
+            </div>
+            <p class="subtitle">Gerencie pesos de roteamento ponderado do AWS Route 53 em tempo real</p>
+        </header>
+
+        <main class="grid-layout">
+            <!-- Coluna 1: Ajuste de Carga -->
+            <section class="card control-section">
+                <h2>Distribuição de Carga</h2>
+                <p class="card-desc">Arraste o slider para alterar a divisão de tráfego entre AWS e GCP.</p>
+
+                <div class="slider-wrapper">
+                    <div class="cloud-labels">
+                        <span class="aws-label"><img src="https://img.icons8.com/color/48/amazon-web-services.png" alt="AWS"/> AWS (EKS)</span>
+                        <span class="gcp-label">GCP (GKE) <img src="https://img.icons8.com/color/48/google-cloud.png" alt="GCP"/></span>
+                    </div>
+
+                    <input type="range" id="traffic-slider" min="0" max="100" value="50" class="styled-slider">
+
+                    <div class="percentage-display">
+                        <div class="percent-box aws-box">
+                            <span class="percent-val" id="aws-percentage">50%</span>
+                            <span class="box-lbl">Peso: <strong id="aws-weight">50</strong></span>
+                        </div>
+                        <div class="percent-box gcp-box">
+                            <span class="percent-val" id="gcp-percentage">50%</span>
+                            <span class="box-lbl">Peso: <strong id="gcp-weight">50</strong></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="domain-select">Domínio de Serviço</label>
+                    <select id="domain-select">
+                        <option value="n8n.yourcompany.com">n8n.yourcompany.com</option>
+                        <option value="api.yourcompany.com">api.yourcompany.com</option>
+                        <option value="frontend.yourcompany.com">frontend.yourcompany.com</option>
+                    </select>
+                </div>
+
+                <button id="apply-btn" class="btn btn-primary">Aplicar Pesos no Route 53</button>
+            </section>
+
+            <!-- Coluna 2: Visualização e CLI -->
+            <div class="right-column">
+                <!-- Gráfico de Pizza Simulado -->
+                <section class="card chart-section">
+                    <h2>Visualização de Tráfego</h2>
+                    <div class="chart-container">
+                        <div class="pie-chart" id="traffic-chart"></div>
+                        <div class="chart-legend">
+                            <div class="legend-item"><span class="color-dot aws-dot"></span> AWS EKS</div>
+                            <div class="legend-item"><span class="color-dot gcp-dot"></span> GCP GKE</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Bloco de Comando Gerado -->
+                <section class="card cli-section">
+                    <h2>Payload do AWS Route 53</h2>
+                    <p class="card-desc">Este é o comando JSON executado na API do Route 53:</p>
+                    <pre><code id="cli-output">Carregando comando...</code></pre>
+                </section>
+            </div>
+        </main>
+
+        <!-- Seção de Histórico -->
+        <section class="card history-section">
+            <h2>Histórico de Alterações</h2>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Data/Hora</th>
+                            <th>Domínio</th>
+                            <th>Divisão (AWS / GCP)</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-log">
+                        <!-- Gerado via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <!-- Notificação -->
+    <div id="toast" class="toast">Alterações aplicadas com sucesso no Route 53!</div>
+
+    <script src="app.js"></script>
+</body>
+</html>
