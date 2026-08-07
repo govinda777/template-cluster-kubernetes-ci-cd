@@ -43,7 +43,6 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: postgresql-dev-credentials
-                  namespace: database
                   key: postgres-password
             - name: N8N_HOST
               value: "n8n.yourcompany.com"

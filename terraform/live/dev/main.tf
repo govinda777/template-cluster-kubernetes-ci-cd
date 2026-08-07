@@ -47,6 +47,19 @@ module "gke" {
 }
 
 # ===============================================================================
+# ROUTE 53 TRAFFIC SPLITTING (ADR 0009)
+# ===============================================================================
+module "route53_traffic_split" {
+  source      = "../../modules/route53"
+  environment = var.environment
+  domain_name = "yourcompany.com"
+  subdomain   = "n8n"
+  aws_weight  = 50
+  gcp_weight  = 50
+}
+
+
+# ===============================================================================
 # AZURE AKS EXTENSION (DEMO PURPOSES / OPTIONAL)
 # ===============================================================================
 #
